@@ -540,7 +540,7 @@ function renderTiles(){
   const box=$("#tiles");box.innerHTML="";
   SECOES.forEach(([id,rot,tit],i)=>{
     const b=document.createElement("button");b.className="tile"+(i===0?" prim":"");
-    b.innerHTML=`<div><div class="rotulo">${rot}</div><div class="t">${tit}${id==="cem"&&periodo()?` <span class="periodo">${periodo()}</span>`:""}</div></div>${resumo(id)}<span class="abrir">Abrir ›</span>`;
+    b.innerHTML=`<div><div class="rotulo">${rot}</div><div class="t">${tit}${id==="cem"&&periodo()?` <span class="periodo">${periodo()}</span>`:""}</div></div>${resumo(id)}`;
     b.addEventListener("click",()=>abrir(id));box.appendChild(b);
   });
 }
