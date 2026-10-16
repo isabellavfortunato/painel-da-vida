@@ -145,9 +145,11 @@ button{font:inherit;cursor:pointer}
 .notas-mes{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:18px}
 
 /* 6. Desafios */
-.desafios{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.desafios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+@media (max-width:640px){.desafios{grid-template-columns:minmax(0,1fr)}}
 .desafio{border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);min-width:0}
-.desafio input[type=text]{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:.01em;border:0;padding:4px 2px;border-bottom:1px solid var(--line);border-radius:0}
+.desafio .des-titulo{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;letter-spacing:.01em;border:0;padding:4px 2px;border-bottom:1px solid var(--line);border-radius:0;resize:none;min-height:0;overflow:hidden}
+.desafio{padding:18px}
 .desafio textarea{min-height:110px;font-size:15px}
 .desafio .acoes{display:flex;justify-content:flex-end;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
 .desafio .acoes button{background:transparent;border:0;color:var(--muted);padding:4px 6px;text-decoration:underline}
@@ -511,16 +513,18 @@ function renderDes(){
   if(!d.itens.length){box.innerHTML=`<div class="vazio-des">Nenhum desafio ainda. Clique em Novo desafio para criar o primeiro card.</div>`;return}
   d.itens.forEach((it,i)=>{
     const c=document.createElement("article");c.className="desafio";
-    c.innerHTML=`<input type="text" id="dt-${it.id}" placeholder="Nome do desafio"><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button></div>`;
+    c.innerHTML=`<textarea class="des-titulo" rows="1" id="dt-${it.id}" placeholder="Nome do desafio"></textarea><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button></div>`;
     const [ti,tx,ac]=c.children;ti.value=it.titulo||"";tx.value=it.texto||"";
-    ti.addEventListener("input",()=>{it.titulo=ti.value;save("desafios")});
-    tx.addEventListener("input",()=>{it.texto=tx.value;save("desafios")});
+    const ajTi=()=>{ti.style.height="auto";ti.style.height=ti.scrollHeight+"px"};
+    ti.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();tx.focus()}});
+    ti.addEventListener("input",()=>{ti.value=ti.value.replace(/\n/g," ");it.titulo=ti.value;save("desafios");ajTi()});
+    tx.addEventListener("input",()=>{it.texto=tx.value;save("desafios");autoAltura(tx)});
     ac.querySelector(".rm").addEventListener("click",()=>{
       ac.innerHTML=`<span>Excluir este desafio?</span><button class="sim">Sim, excluir</button><button class="nao">Cancelar</button>`;
       ac.querySelector(".sim").onclick=()=>{d.itens.splice(i,1);save("desafios");renderDes()};
       ac.querySelector(".nao").onclick=renderDes;
     });
-    box.appendChild(c);
+    box.appendChild(c);ajTi();autoAltura(tx);
   });
 }
 $("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
