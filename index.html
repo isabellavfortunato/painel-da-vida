@@ -43,13 +43,14 @@ img{max-width:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
 .grade{max-width:920px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 .voltar{display:flex}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(180px,calc((100vh - 180px) / 2));gap:18px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(max(180px,calc((100vh - 180px) / 2)),auto);gap:18px}
 .tile{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;color:var(--fg);transition:transform .18s ease,box-shadow .18s ease,border-color .18s;min-width:0;overflow:hidden}
 .tile:hover{transform:translateY(-3px);border-color:var(--accent-mid);box-shadow:0 16px 34px -22px var(--accent)}
 .periodo{display:inline-block;color:var(--accent);font-weight:500;font-size:.62em;letter-spacing:.02em;white-space:nowrap;vertical-align:.12em}
 .tile .t{font-family:var(--display);font-size:clamp(24px,2.6vw,32px);line-height:1.05;font-weight:600;margin-top:6px;text-wrap:balance}
 .tile .resumo{color:var(--muted);font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tile .num{display:block;font-family:var(--display);font-size:clamp(34px,4vw,46px);line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.tile .num.menor{font-size:clamp(24px,2.6vw,30px)}
 .tile .abrir{font-size:13px;color:var(--accent);font-weight:600}
 .tile.prim{background:var(--hero);color:var(--hero-ink);border-color:transparent}
 .tile.prim .rotulo,.tile.prim .resumo{color:var(--hero-muted)}
@@ -529,7 +530,7 @@ const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 co
 const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,diario:()=>{renderCal();renderDia()},desafios:renderDes};
 function resumo(id){
   if(id==="vida"){const t=(get("vida",{texto:""}).texto||"").trim();return t?`<span class="resumo">${esc(t)}</span>`:`<span class="resumo">Escreva aqui a descrição da vida que você quer ter.</span>`}
-  if(id==="cem"){const d=lista();return `<div><span class="num">${d.itens.filter(i=>i.f).length} de 101</span><span class="resumo">itens concluídos, ${d.itens.filter(i=>i.t.trim()).length} escritos</span></div>`}
+  if(id==="cem"){const d=lista();return `<div><span class="num menor">${d.itens.filter(i=>i.f).length} de 101</span><span class="resumo">itens concluídos, ${d.itens.filter(i=>i.t.trim()).length} escritos</span></div>`}
   if(id==="areas"){const n=areas().itens.filter(a=>a.nota>0).map(a=>a.nota);const m=n.length?(n.reduce((x,y)=>x+y,0)/n.length).toFixed(1).replace(".",","):"–";return `<div><span class="num">${m}</span><span class="resumo">média de ${n.length} de 10 áreas avaliadas</span></div>`}
   if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const q=(d.imagens||[]).length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"imagem":"imagens"} no moodboard</span></div>`}
   if(id==="diario"){let q=0;const n=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();for(let i=1;i<=n;i++)if(temTexto(chaveDia(new Date(hoje.getFullYear(),hoje.getMonth(),i))))q++;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"dia registrado":"dias registrados"} em ${MESES[hoje.getMonth()]}</span></div>`}
