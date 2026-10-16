@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Painel da vida</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#8a4a64">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Painel da vida">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icone-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-size:14px;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: seis painéis empilhados numa coluna central, o primeiro em faixa malva, os demais em papel claro com bordas finas */
+:root{
+  --bg:#f6f0f3; --surface:#fffcfd; --fg:#2b1a22; --muted:#7c6671; --line:#e7d7de;
+  --accent:#8a4a64; --accent-ink:#ffffff; --accent-soft:#f1e3e9; --accent-mid:#c79bae;
+  --hero:#8a4a64; --hero-ink:#fbf1f5; --hero-muted:#e4c6d3;
+  --display:"Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body:"Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#181115; --surface:#221920; --fg:#f3e8ed; --muted:#b39ca8; --line:#3a2b33;
+  --accent:#cf94ad; --accent-ink:#1e1318; --accent-soft:#35242d; --accent-mid:#7d4d62;
+  --hero:#5c3044; --hero-ink:#fbeef4; --hero-muted:#d7b3c3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#181115; --surface:#221920; --fg:#f3e8ed; --muted:#b39ca8; --line:#3a2b33;
+  --accent:#cf94ad; --accent-ink:#1e1318; --accent-soft:#35242d; --accent-mid:#7d4d62;
+  --hero:#5c3044; --hero-ink:#fbeef4; --hero-muted:#d7b3c3; color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+.grade{max-width:920px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.voltar{display:flex}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(180px,calc((100vh - 180px) / 2));gap:18px}
+.tile{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;color:var(--fg);transition:transform .18s ease,box-shadow .18s ease,border-color .18s;min-width:0;overflow:hidden}
+.tile:hover{transform:translateY(-3px);border-color:var(--accent-mid);box-shadow:0 16px 34px -22px var(--accent)}
+.periodo{display:inline-block;color:var(--accent);font-weight:500;font-size:.62em;letter-spacing:.02em;white-space:nowrap;vertical-align:.12em}
+.tile .t{font-family:var(--display);font-size:clamp(24px,2.6vw,32px);line-height:1.05;font-weight:600;margin-top:6px;text-wrap:balance}
+.tile .resumo{color:var(--muted);font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile .num{display:block;font-family:var(--display);font-size:clamp(34px,4vw,46px);line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.tile .abrir{font-size:13px;color:var(--accent);font-weight:600}
+.tile.prim{background:var(--hero);color:var(--hero-ink);border-color:transparent}
+.tile.prim .rotulo,.tile.prim .resumo{color:var(--hero-muted)}
+.tile.prim .num,.tile.prim .abrir{color:var(--hero-ink)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;display:flex;flex-direction:column;gap:22px}
+.topo{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.topo h1{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:700;font-size:clamp(34px,6vw,54px);line-height:1;margin:0;letter-spacing:-.02em;text-transform:uppercase;color:var(--accent)}
+.status{font-size:13px;color:var(--muted)}
+.topo-dir{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topo-dir .btn{font-size:13px;padding:7px 14px}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(18px,3.5vw,32px);display:flex;flex-direction:column;gap:18px;min-width:0}
+.rotulo{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.2vw,38px);line-height:1.1;margin:4px 0 0;letter-spacing:.01em;text-wrap:balance}
+.cab p{margin:6px 0 0;color:var(--muted);max-width:62ch}
+textarea,input[type=text],input[type=date]{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;box-sizing:border-box}
+textarea{resize:vertical;min-height:120px;line-height:1.6}
+textarea:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:9px 18px;font-weight:600;font-size:14px}
+.btn.sec{background:var(--accent-soft);color:var(--fg)}
+.btn.linha{background:transparent;border:1px solid var(--line);color:var(--muted)}
+
+/* 1. A vida que eu quero ter */
+#vida{background:var(--hero);border-color:transparent;color:var(--hero-ink)}
+#vida .rotulo{color:var(--hero-muted)}
+#vida h2{font-size:clamp(28px,4.6vw,42px)}
+#vida textarea{font-family:var(--display);font-weight:300;font-size:clamp(21px,2.4vw,25px);letter-spacing:.01em;color:var(--hero-ink);border-color:color-mix(in srgb,var(--hero-ink) 30%,transparent);min-height:170px;flex:1}
+#vida textarea::placeholder{color:var(--hero-muted)}
+#vida textarea:focus{outline-color:var(--hero-ink)}
+
+/* cards de números */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.card{background:var(--accent-soft);border-radius:12px;padding:14px 16px}
+.card b{display:block;font-family:var(--display);font-size:36px;font-weight:400;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--accent)}
+.card span{font-size:13px;color:var(--muted)}
+
+/* 2. Lista 101 */
+.inicio{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.inicio label{font-size:14px;color:var(--muted)}
+.inicio input{width:auto}
+.importar{background:var(--accent-soft);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.importar p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.importar textarea{background:var(--surface);min-height:160px}
+.imp-acoes{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.imp-acoes span{font-size:14px;color:var(--fg);margin-right:auto}
+.imp-acoes span.alerta{color:var(--accent);font-weight:600}
+.importado{color:var(--accent);font-weight:600;font-size:14px}
+.lista{display:grid;grid-template-columns:minmax(0,1fr);max-height:520px;overflow-y:auto;padding-right:6px;border-top:1px solid var(--line)}
+.item{display:grid;grid-template-columns:34px 22px 1fr;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
+.item .n{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);text-align:right}
+.item input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;margin:0}
+.item input[type=text]{border:0;border-radius:6px;padding:6px 6px}
+.item.feito input[type=text]{text-decoration:line-through;color:var(--muted)}
+
+/* 3. Áreas */
+.areas{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+.roda svg{width:100%;height:auto;max-width:420px;display:block;margin:0 auto}
+.roda text{font-family:var(--body);fill:var(--fg);font-size:11px}
+.roda .vazio{fill:var(--muted)}
+.linhas-areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 20px}
+.area{display:grid;grid-template-columns:1fr;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.area input[type=text]{padding:7px 10px}
+.notas{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.notas button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:5px 0;font-size:13px;font-variant-numeric:tabular-nums}
+.notas button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.notas button.ate{background:var(--accent-soft);color:var(--fg);border-color:var(--accent-soft)}
+
+/* 4. Pessoa */
+.mood{columns:2 160px;column-gap:12px}
+.foto{break-inside:avoid;margin-bottom:12px;position:relative;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
+.foto img{display:block;width:100%}
+.foto button{position:absolute;top:8px;right:8px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:4px 10px;font-size:12px}
+.subir{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.subir small{color:var(--muted)}
+.vazio-mood{border:1.5px dashed var(--accent-mid);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+
+/* 5. Diário */
+.diario{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+.mes{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mes strong{font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:.02em;text-transform:capitalize}
+.mes button{background:var(--accent-soft);border:0;border-radius:999px;width:36px;height:36px;color:var(--fg);font-size:18px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .sem{font-size:12px;text-align:center;color:var(--muted);padding:4px 0;font-weight:600}
+.cal button{aspect-ratio:1.25;max-width:100%;border:1px solid var(--line);background:transparent;border-radius:8px;color:var(--fg);font-variant-numeric:tabular-nums;font-size:14px;position:relative}
+.cal button.tem::after{content:"";position:absolute;bottom:6px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--accent)}
+.cal button.hoje{border-color:var(--accent);font-weight:600}
+.cal button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.cal button.sel::after{background:var(--accent-ink)}
+.dia-edit{display:flex;flex-direction:column;gap:10px}
+.dia-edit h3,.notas-mes h3{font-family:var(--display);font-weight:600;font-size:24px;margin:0;letter-spacing:.01em}
+.notas-mes{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:18px}
+
+/* 6. Desafios */
+.desafios{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.desafio{border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);min-width:0}
+.desafio input[type=text]{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:.01em;border:0;padding:4px 2px;border-bottom:1px solid var(--line);border-radius:0}
+.desafio textarea{min-height:110px;font-size:15px}
+.desafio .acoes{display:flex;justify-content:flex-end;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.desafio .acoes button{background:transparent;border:0;color:var(--muted);padding:4px 6px;text-decoration:underline}
+.desafio .acoes button.sim{color:var(--accent);font-weight:600}
+.vazio-des{border:1.5px dashed var(--accent-mid);border-radius:12px;padding:24px;color:var(--muted);text-align:center}
+
+@media (max-width:760px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(160px,auto);gap:12px}
+  .tile{padding:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+.login-caixa{max-width:420px;display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.login-titulo{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:-.02em;color:var(--accent);font-size:clamp(40px,10vw,60px);line-height:1;margin:0}
+.login p{margin:0;color:var(--muted);line-height:1.55}
+.login-erro{color:var(--accent)!important;font-weight:600}
+</style>
+</head>
+<body>
+<div class="login" id="login" hidden>
+  <div class="login-caixa">
+    <h1 class="login-titulo">Painel da vida</h1>
+    <p>Entre com a sua conta Google para abrir o seu painel. Os seus dados ficam guardados na sua conta e aparecem em todos os aparelhos em que você entrar.</p>
+    <button class="btn" id="entrar">Entrar com Google</button>
+    <p class="login-erro" id="login-erro" aria-live="polite"></p>
+  </div>
+</div>
+<div id="app" hidden>
+
+
+<div class="wrap">
+  <header class="topo">
+    <h1>Painel da vida</h1>
+    <div class="topo-dir"><span class="status" id="status" aria-live="polite">Carregando</span><button class="btn linha" id="importar-bk">Importar backup</button><input type="file" id="arquivo-bk" accept="application/json,.json" hidden><button class="btn linha" id="exportar" hidden>Exportar meus dados</button><button class="btn linha" id="sair">Sair</button></div>
+  </header>
+
+  <nav class="tiles" id="tiles" aria-label="Partes do painel"></nav>
+
+  <div class="grade" id="grade" hidden>
+  <div class="voltar"><button class="btn sec" id="voltar">‹ Voltar ao painel</button></div>
+  <section id="vida" hidden>
+    <div class="cab">
+      <div class="rotulo">Visão</div>
+      <h2>A vida que eu quero ter</h2>
+    </div>
+    <textarea id="vida-texto" placeholder="Descreva aqui, com todos os detalhes, a vida que você quer ter: onde mora, como são os seus dias, com quem você convive, o que faz e como se sente."></textarea>
+  </section>
+
+  <section id="cem" hidden>
+    <div class="cab">
+      <div class="rotulo">Lista</div>
+      <h2>101 coisas para fazer em 101 dias <span class="periodo" id="cem-periodo"></span></h2>
+    </div>
+    <div class="inicio">
+      <label for="cem-inicio">Data de início</label>
+      <input type="date" id="cem-inicio">
+      <button class="btn sec" id="imp-abrir" style="margin-left:auto">Importar lista</button>
+    </div>
+    <div class="importar" id="imp-painel" hidden>
+      <p>Copie todo o texto da sua lista no Google Docs e cole aqui. Cada linha vira um item, na mesma ordem, e os números e marcadores do começo das linhas são retirados automaticamente.</p>
+      <textarea id="imp-texto" placeholder="Cole a sua lista aqui"></textarea>
+      <div class="imp-acoes"><span id="imp-info"></span><button class="btn linha" id="imp-cancelar">Cancelar</button><button class="btn" id="imp-ok">Importar</button></div>
+    </div>
+    <div class="cards" id="cem-cards"></div>
+    <div class="lista" id="cem-lista"></div>
+  </section>
+
+  <section id="areas" hidden>
+    <div class="cab">
+      <div class="rotulo">Equilíbrio</div>
+      <h2>Áreas da vida</h2>
+      <p>Dê um nome a cada área e marque, de 1 a 10, em que nível ela está hoje. O gráfico se atualiza enquanto você preenche.</p>
+    </div>
+    <div class="areas">
+      <div class="roda" id="roda"></div>
+      <div class="linhas-areas" id="areas-lista"></div>
+    </div>
+  </section>
+
+  <section id="pessoa" hidden>
+    <div class="cab">
+      <div class="rotulo">Identidade</div>
+      <h2>A pessoa que eu quero ser para atingir tudo o que eu quero</h2>
+    </div>
+    <textarea id="pessoa-texto" placeholder="Como pensa, como age, quais hábitos tem e como trata a si mesma e aos outros a pessoa que vai viver essa vida?"></textarea>
+    <div class="subir">
+      <label class="btn" for="pessoa-arquivo" tabindex="0">Adicionar imagens</label>
+      <input type="file" id="pessoa-arquivo" accept="image/*" multiple hidden>
+      <small id="pessoa-aviso">Imagens de referência para o seu moodboard.</small>
+    </div>
+    <div id="mood"></div>
+  </section>
+
+  <section id="diario" hidden>
+    <div class="cab">
+      <div class="rotulo">Todos os dias</div>
+      <h2>Diário de gratidão</h2>
+      <p>Clique em um dia para escrever. Os dias com registro ficam marcados com um ponto.</p>
+    </div>
+    <div class="diario">
+      <div>
+        <div class="mes">
+          <button id="mes-ant" aria-label="Mês anterior">‹</button>
+          <strong id="mes-nome"></strong>
+          <button id="mes-prox" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="cal" id="cal"></div>
+      </div>
+      <div class="dia-edit">
+        <h3 id="dia-titulo"></h3>
+        <textarea id="dia-texto" placeholder="Pelo que você é grata hoje?"></textarea>
+      </div>
+    </div>
+    <div class="notas-mes">
+      <h3 id="notas-titulo">Anotações livres</h3>
+      <textarea id="notas-texto" placeholder="Um espaço para escrever fora dos dias: reflexões do mês, aprendizados, o que você quer lembrar."></textarea>
+    </div>
+  </section>
+
+  <section id="desafios" hidden>
+    <div class="cab" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="rotulo">Compromissos</div>
+        <h2>Desafios comigo mesma</h2>
+      </div>
+      <button class="btn" id="des-novo">Novo desafio</button>
+    </div>
+    <div class="desafios" id="des-lista"></div>
+  </section>
+  </div>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc as fsDoc, collection, getDocs, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const fdb=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+let uid=null;
+
+const $=s=>document.querySelector(s);
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const PADRAO_AREAS=["Saúde","Família","Relacionamento","Finanças","Carreira","Desenvolvimento pessoal","Lazer","Espiritualidade","Amizades","Casa"];
+
+/* ---------- armazenamento ---------- */
+const cache={};
+let col=null;
+const timers={};
+function lsGet(id){return null}
+function lsSet(id,d){}
+function get(id,def){if(!cache[id]){cache[id]=lsGet(id)||def}return cache[id]}
+function status(t){$("#status").textContent=t}
+function save(id){
+  lsSet(id,cache[id]);
+  clearTimeout(timers[id]);
+  if(!col){return}
+  status("Salvando");
+  timers[id]=setTimeout(async()=>{
+    try{await col.doc(id).set(cache[id]);status("Tudo salvo")}
+    catch(e){status("Sem conexão: as alterações serão enviadas quando a internet voltar.")}
+  },700);
+}
+
+/* ---------- 1. vida ---------- */
+function autoAltura(t){t.style.height="auto";t.style.height=Math.max(t.scrollHeight+2,120)+"px"}
+function ligarTexto(el,id,campo){
+  el.addEventListener("input",()=>{const d=get(id,{});d[campo]=el.value;save(id);autoAltura(el)});
+}
+function renderVida(){const t=$("#vida-texto");t.value=get("vida",{texto:""}).texto||"";autoAltura(t)}
+ligarTexto($("#vida-texto"),"vida","texto");
+
+/* ---------- 2. lista 101 ---------- */
+function periodo(){const d=lista();if(!d.inicio)return "";const ini=new Date(d.inicio+"T00:00:00"),fim=new Date(ini);fim.setDate(fim.getDate()+100);return ini.toLocaleDateString("pt-BR")+" a "+fim.toLocaleDateString("pt-BR")}
+function lista(){const d=get("lista",{inicio:"2026-10-19",itens:[]});if(!d.inicio)d.inicio="2026-10-19";while(d.itens.length<101)d.itens.push({t:"",f:false});return d}
+function cardsCem(){
+  const d=lista();$("#cem-periodo").textContent=periodo();
+  const escritos=d.itens.filter(i=>i.t.trim()).length, feitos=d.itens.filter(i=>i.f).length;
+  let diaTxt="Defina a data", diaLbl="dia da contagem";
+  if(d.inicio){
+    const ini=new Date(d.inicio+"T00:00:00"), hoje=new Date();hoje.setHours(0,0,0,0);
+    const n=Math.floor((hoje-ini)/86400000)+1;
+    const fim=new Date(ini);fim.setDate(fim.getDate()+100);
+    const fimTxt=fim.toLocaleDateString("pt-BR");
+    if(n<1){diaTxt="0";diaLbl="começa em "+ini.toLocaleDateString("pt-BR")}
+    else if(n>101){diaTxt="101";diaLbl="encerrado em "+fimTxt}
+    else{diaTxt=n+" de 101";diaLbl="termina em "+fimTxt}
+  }
+  $("#cem-cards").innerHTML=`<div class="card"><b>${escritos}</b><span>itens escritos</span></div><div class="card"><b>${feitos}</b><span>itens concluídos</span></div><div class="card"><b>${101-feitos}</b><span>itens a concluir</span></div><div class="card"><b>${diaTxt}</b><span>${diaLbl}</span></div>`;
+}
+function renderCem(){
+  const d=lista();$("#cem-inicio").value=d.inicio||"";
+  const box=$("#cem-lista");box.innerHTML="";
+  d.itens.forEach((it,i)=>{
+    const row=document.createElement("div");row.className="item"+(it.f?" feito":"");
+    row.innerHTML=`<span class="n">${i+1}</span><input type="checkbox" id="c${i}" aria-label="Concluído"><input type="text" id="t${i}" placeholder="Escreva aqui">`;
+    const cb=row.children[1],tx=row.children[2];cb.checked=!!it.f;tx.value=it.t;
+    cb.addEventListener("change",()=>{it.f=cb.checked;row.classList.toggle("feito",it.f);save("lista");cardsCem()});
+    tx.addEventListener("input",()=>{it.t=tx.value;save("lista");cardsCem()});
+    box.appendChild(row);
+  });
+  cardsCem();
+}
+function linhasImport(){return $("#imp-texto").value.split(/\r\n|\r|\n|\u000b|\u2028|\u2029/).map(l=>l.replace(/^\s*(?:\d{1,3}\s*[.)\-–—:]\s*|[•●◦▪·*\-–]\s+|\[\s?[xX]?\s?\]\s*)/,"").trim()).filter(Boolean)}
+let impConfirma=false;
+function impInfo(){const n=linhasImport().length;$("#imp-info").textContent=n?(n+(n===1?" item encontrado":" itens encontrados")+(n>101?". Só os 101 primeiros serão usados.":"")):"";impConfirma=false;$("#imp-info").className="";$("#imp-ok").textContent="Importar"}
+$("#imp-texto").addEventListener("input",impInfo);
+$("#imp-abrir").addEventListener("click",()=>{$("#imp-painel").hidden=false;$("#imp-texto").focus()});
+$("#imp-cancelar").addEventListener("click",()=>{$("#imp-painel").hidden=true;$("#imp-texto").value="";impInfo()});
+$("#imp-ok").addEventListener("click",()=>{
+  const novas=linhasImport().slice(0,101);if(!novas.length){$("#imp-info").textContent="Cole a lista antes de importar.";return}
+  const d=lista();
+  if(d.itens.some(i=>i.t.trim())&&!impConfirma){impConfirma=true;$("#imp-info").textContent="A lista atual já tem itens escritos. Clique de novo para substituí-los pela lista colada.";$("#imp-info").className="alerta";$("#imp-ok").textContent="Substituir e importar";return}
+  d.itens=Array.from({length:101},(_,i)=>({t:novas[i]||"",f:false}));
+  save("lista");$("#imp-painel").hidden=true;$("#imp-texto").value="";impInfo();renderCem();
+  status(novas.length+" itens importados");const aviso=document.createElement("p");aviso.className="importado";aviso.textContent=novas.length+" itens importados para a lista.";$("#cem-lista").before(aviso);setTimeout(()=>aviso.remove(),6000);$("#cem-lista").scrollTop=0;
+});
+$("#cem-inicio").addEventListener("change",e=>{lista().inicio=e.target.value;save("lista");cardsCem()});
+
+/* ---------- 3. áreas ---------- */
+function areas(){const d=get("areas",{itens:[]});while(d.itens.length<10)d.itens.push({nome:"",nota:0});return d}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function renderRoda(){
+  const d=areas(),R=130,N=10,ang=2*Math.PI/N;
+  let s=`<svg viewBox="-215 -185 430 370" role="img" aria-label="Gráfico das áreas da vida">`;
+  for(let k=1;k<=10;k++)s+=`<circle r="${R*k/10}" fill="none" stroke="var(--line)" stroke-width="${k===10?1.4:.8}"/>`;
+  d.itens.forEach((a,i)=>{
+    const a0=-Math.PI/2+i*ang,a1=a0+ang,r=R*(a.nota||0)/10;
+    if(r>0){
+      const p=(rr,t)=>[(rr*Math.cos(t)).toFixed(2),(rr*Math.sin(t)).toFixed(2)];
+      const [x0,y0]=p(r,a0),[x1,y1]=p(r,a1);
+      s+=`<path d="M0 0L${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}Z" fill="var(--accent)" fill-opacity="${i%2?0.78:0.95}"/>`;
+      const [nx,ny]=p(Math.max(r-14,12),a0+ang/2);
+      if(r>26)s+=`<text x="${nx}" y="${ny}" text-anchor="middle" dominant-baseline="central" style="fill:var(--accent-ink);font-weight:600">${a.nota}</text>`;
+    }
+    const [lx,ly]=[(R+10)*Math.cos(a0),(R+10)*Math.sin(a0)];
+    s+=`<line x1="0" y1="0" x2="${(R*Math.cos(a0)).toFixed(2)}" y2="${(R*Math.sin(a0)).toFixed(2)}" stroke="var(--line)" stroke-width=".8"/>`;
+    const m=a0+ang/2,tx=(R+16)*Math.cos(m),ty=(R+16)*Math.sin(m);
+    const anc=Math.abs(Math.cos(m))<.2?"middle":(Math.cos(m)>0?"start":"end");
+    let nome=(a.nome||PADRAO_AREAS[i]);if(nome.length>20)nome=nome.slice(0,19)+"…";
+    s+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anc}" dominant-baseline="central" class="${a.nome?"":"vazio"}">${esc(nome)}</text>`;
+  });
+  s+=`</svg>`;
+  const notas=d.itens.filter(a=>a.nota>0).map(a=>a.nota);
+  const media=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1).replace(".",","):"–";
+  const baixa=notas.length?Math.min(...notas):"–";
+  $("#roda").innerHTML=s+`<div class="cards" style="margin-top:14px"><div class="card"><b>${media}</b><span>média geral</span></div><div class="card"><b>${notas.length} de 10</b><span>áreas avaliadas</span></div><div class="card"><b>${baixa}</b><span>menor nota</span></div></div>`;
+}
+function renderAreas(){
+  const d=areas(),box=$("#areas-lista");box.innerHTML="";
+  d.itens.forEach((a,i)=>{
+    const el=document.createElement("div");el.className="area";
+    el.innerHTML=`<input type="text" id="area${i}" placeholder="${PADRAO_AREAS[i]}" aria-label="Nome da área ${i+1}"><div class="notas" role="group" aria-label="Nota"></div>`;
+    const inp=el.firstChild;inp.value=a.nome;
+    inp.addEventListener("input",()=>{a.nome=inp.value;save("areas");renderRoda()});
+    const g=el.lastChild;
+    const pintar=()=>[...g.children].forEach((b,k)=>{b.className=(k+1===a.nota?"on":(k+1<a.nota?"ate":""));b.setAttribute("aria-pressed",k+1===a.nota)});
+    for(let k=1;k<=10;k++){const b=document.createElement("button");b.textContent=k;b.addEventListener("click",()=>{a.nota=a.nota===k?0:k;pintar();save("areas");renderRoda()});g.appendChild(b)}
+    pintar();box.appendChild(el);
+  });
+  renderRoda();
+}
+
+/* ---------- 4. pessoa ---------- */
+function renderPessoa(){
+  const d=get("pessoa",{texto:"",imagens:[]});d.imagens=d.imagens||[];
+  const t=$("#pessoa-texto");t.value=d.texto||"";autoAltura(t);
+  const box=$("#mood");
+  if(!d.imagens.length){box.innerHTML=`<div class="vazio-mood">Seu moodboard aparece aqui. Use o botão acima para adicionar fotos, recortes e referências da pessoa que você quer ser.</div>`;return}
+  box.innerHTML=`<div class="mood"></div>`;const m=box.firstChild;
+  d.imagens.forEach((im,i)=>{
+    const f=document.createElement("div");f.className="foto";
+    f.innerHTML=`<img alt="Imagem do moodboard"><button>Remover</button>`;
+    const imgEl=f.firstChild;if(im.url||im.data){imgEl.src=im.url||im.data}else{carregarImagem(im.id).then(u=>{if(u)imgEl.src=u})}
+    f.lastChild.addEventListener("click",async()=>{
+      if(f.lastChild.dataset.ok!=="1"){f.lastChild.dataset.ok="1";f.lastChild.textContent="Confirmar remoção";return}
+      d.imagens.splice(i,1);save("pessoa");renderPessoa();
+      if(im.id){try{await apagarImagem(im.id)}catch(e){}}
+    });
+    m.appendChild(f);
+  });
+}
+ligarTexto($("#pessoa-texto"),"pessoa","texto");
+async function exportar(){
+  const bt=$("#exportar");bt.disabled=true;bt.textContent="Preparando o arquivo";
+  try{
+    const docs={};
+    try{const ks=Object.keys(localStorage).filter(k=>k.startsWith("painel:"));ks.forEach(k=>{const v=lsGet(k.slice(7));if(v)docs[k.slice(7)]=v})}catch(e){}
+    Object.keys(cache).forEach(k=>{docs[k]=JSON.parse(JSON.stringify(cache[k]))});
+    if(col){const snap=await col.get();snap.docs.forEach(d=>{docs[d.id]=JSON.parse(JSON.stringify(d.data()||{}))})}
+    Object.keys(docs).forEach(k=>{const d=docs[k];if(d&&typeof d.texto==="string"&&!d.texto.trim()&&Object.keys(d).length===1)delete docs[k]});
+    const imagens={};
+    if(docs.pessoa&&Array.isArray(docs.pessoa.imagens)){
+      const ids=[];
+      for(const [i,im] of docs.pessoa.imagens.entries()){
+        const id="img"+(i+1)+"-"+Date.now().toString(36);
+        try{imagens[id]=im.data?im.data:(im.url?await reduzir(await (await fetch(im.url)).blob()):await carregarImagem(im.id));if(imagens[id])ids.push({id})}catch(e){}
+      }
+      docs.pessoa.imagens=ids;
+    }
+    const json=JSON.stringify({app:"painel-da-vida",versao:1,exportadoEm:new Date().toISOString(),docs,imagens});
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([json],{type:"application/json"}));a.download="painel da vida backup "+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    bt.textContent="Arquivo exportado";
+  }catch(e){bt.textContent=(e&&e.code==="declined")?"Exportar meus dados":"Não foi possível exportar"}
+  bt.disabled=false;setTimeout(()=>{bt.textContent="Exportar meus dados"},5000);
+}
+$("#exportar").addEventListener("click",exportar);
+function reduzir(file){return new Promise((ok,erro)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=1200,esc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*esc);c.height=Math.round(img.height*esc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.8))};img.onerror=erro;img.src=r.result};r.onerror=erro;r.readAsDataURL(file)})}
+$("#pessoa-arquivo").addEventListener("change",async e=>{
+  const d=get("pessoa",{texto:"",imagens:[]});d.imagens=d.imagens||[];
+  const files=[...e.target.files];e.target.value="";
+  for(const f of files){
+    $("#pessoa-aviso").textContent="Enviando "+f.name;
+    try{
+      const id=await guardarImagem(await reduzirAte(f));d.imagens.push({id})
+    }catch(err){$("#pessoa-aviso").textContent="Não consegui enviar "+f.name+". Tente uma imagem menor que 20 MB.";continue}
+  }
+  $("#pessoa-aviso").textContent="Imagens de referência para o seu moodboard.";
+  save("pessoa");renderPessoa();
+});
+$(".subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#pessoa-arquivo").click()}});
+
+/* ---------- 5. diário ---------- */
+const hoje=new Date();hoje.setHours(0,0,0,0);
+let vis=new Date(hoje.getFullYear(),hoje.getMonth(),1), sel=new Date(hoje);
+const pad=n=>String(n).padStart(2,"0");
+const chaveDia=d=>"d-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const chaveMes=d=>"m-"+d.getFullYear()+"-"+pad(d.getMonth()+1);
+function temTexto(id){const d=cache[id]||lsGet(id);return d&&d.texto&&d.texto.trim()}
+function renderCal(){
+  $("#mes-nome").textContent=MESES[vis.getMonth()]+" de "+vis.getFullYear();
+  const c=$("#cal");c.innerHTML=["D","S","T","Q","Q","S","S"].map(s=>`<div class="sem">${s}</div>`).join("");
+  for(let i=0;i<vis.getDay();i++)c.appendChild(document.createElement("div"));
+  const dias=new Date(vis.getFullYear(),vis.getMonth()+1,0).getDate();
+  for(let n=1;n<=dias;n++){
+    const d=new Date(vis.getFullYear(),vis.getMonth(),n),b=document.createElement("button");
+    b.textContent=n;b.setAttribute("aria-label",n+" de "+MESES[d.getMonth()]);
+    if(+d===+hoje)b.classList.add("hoje");if(+d===+sel)b.classList.add("sel");if(temTexto(chaveDia(d)))b.classList.add("tem");
+    b.addEventListener("click",()=>{sel=d;renderCal();renderDia();$("#dia-texto").focus()});
+    c.appendChild(b);
+  }
+  $("#notas-titulo").textContent="Anotações livres de "+MESES[vis.getMonth()];
+  const nt=$("#notas-texto");nt.value=(get(chaveMes(vis),{texto:""}).texto)||"";autoAltura(nt);
+}
+function renderDia(){
+  $("#dia-titulo").textContent=sel.getDate()+" de "+MESES[sel.getMonth()]+" de "+sel.getFullYear();
+  const t=$("#dia-texto");t.value=(get(chaveDia(sel),{texto:""}).texto)||"";autoAltura(t);
+}
+$("#dia-texto").addEventListener("input",e=>{const id=chaveDia(sel),d=get(id,{texto:""});const tinha=!!(d.texto&&d.texto.trim());d.texto=e.target.value;save(id);autoAltura(e.target);if(tinha!==!!d.texto.trim())renderCal()});
+$("#notas-texto").addEventListener("input",e=>{const id=chaveMes(vis),d=get(id,{texto:""});d.texto=e.target.value;save(id);autoAltura(e.target)});
+$("#mes-ant").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.getMonth()-1,1);renderCal()});
+$("#mes-prox").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.getMonth()+1,1);renderCal()});
+
+/* ---------- 6. desafios ---------- */
+function renderDes(){
+  const d=get("desafios",{itens:[]}),box=$("#des-lista");box.innerHTML="";
+  if(!d.itens.length){box.innerHTML=`<div class="vazio-des">Nenhum desafio ainda. Clique em Novo desafio para criar o primeiro card.</div>`;return}
+  d.itens.forEach((it,i)=>{
+    const c=document.createElement("article");c.className="desafio";
+    c.innerHTML=`<input type="text" id="dt-${it.id}" placeholder="Nome do desafio"><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button></div>`;
+    const [ti,tx,ac]=c.children;ti.value=it.titulo||"";tx.value=it.texto||"";
+    ti.addEventListener("input",()=>{it.titulo=ti.value;save("desafios")});
+    tx.addEventListener("input",()=>{it.texto=tx.value;save("desafios")});
+    ac.querySelector(".rm").addEventListener("click",()=>{
+      ac.innerHTML=`<span>Excluir este desafio?</span><button class="sim">Sim, excluir</button><button class="nao">Cancelar</button>`;
+      ac.querySelector(".sim").onclick=()=>{d.itens.splice(i,1);save("desafios");renderDes()};
+      ac.querySelector(".nao").onclick=renderDes;
+    });
+    box.appendChild(c);
+  });
+}
+$("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
+
+/* ---------- início ---------- */
+const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["diario","Todos os dias","Diário de gratidão"],["desafios","Compromissos","Desafios comigo mesma"]];
+const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,diario:()=>{renderCal();renderDia()},desafios:renderDes};
+function resumo(id){
+  if(id==="vida"){const t=(get("vida",{texto:""}).texto||"").trim();return t?`<span class="resumo">${esc(t)}</span>`:`<span class="resumo">Escreva aqui a descrição da vida que você quer ter.</span>`}
+  if(id==="cem"){const d=lista();return `<div><span class="num">${d.itens.filter(i=>i.f).length} de 101</span><span class="resumo">itens concluídos, ${d.itens.filter(i=>i.t.trim()).length} escritos</span></div>`}
+  if(id==="areas"){const n=areas().itens.filter(a=>a.nota>0).map(a=>a.nota);const m=n.length?(n.reduce((x,y)=>x+y,0)/n.length).toFixed(1).replace(".",","):"–";return `<div><span class="num">${m}</span><span class="resumo">média de ${n.length} de 10 áreas avaliadas</span></div>`}
+  if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const q=(d.imagens||[]).length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"imagem":"imagens"} no moodboard</span></div>`}
+  if(id==="diario"){let q=0;const n=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();for(let i=1;i<=n;i++)if(temTexto(chaveDia(new Date(hoje.getFullYear(),hoje.getMonth(),i))))q++;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"dia registrado":"dias registrados"} em ${MESES[hoje.getMonth()]}</span></div>`}
+  if(id==="desafios"){const q=get("desafios",{itens:[]}).itens.length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"desafio criado":"desafios criados"}</span></div>`}
+}
+function renderTiles(){
+  const box=$("#tiles");box.innerHTML="";
+  SECOES.forEach(([id,rot,tit],i)=>{
+    const b=document.createElement("button");b.className="tile"+(i===0?" prim":"");
+    b.innerHTML=`<div><div class="rotulo">${rot}</div><div class="t">${tit}${id==="cem"&&periodo()?` <span class="periodo">${periodo()}</span>`:""}</div></div>${resumo(id)}<span class="abrir">Abrir ›</span>`;
+    b.addEventListener("click",()=>abrir(id));box.appendChild(b);
+  });
+}
+function abrir(id){$("#tiles").hidden=true;$("#grade").hidden=false;SECOES.forEach(([s])=>{document.getElementById(s).hidden=s!==id});RENDER[id]();window.scrollTo(0,0)}
+function fechar(){$("#grade").hidden=true;$("#tiles").hidden=false;renderTiles();window.scrollTo(0,0)}
+$("#voltar").addEventListener("click",fechar);
+function renderTudo(){renderVida();renderCem();renderAreas();renderPessoa();renderCal();renderDia();renderDes();renderTiles()}
+
+
+
+/* ---------- imagens no Firestore ---------- */
+const imgCache={};
+async function carregarImagem(id){
+  if(imgCache[id])return imgCache[id];
+  try{const s=await getDoc(fsDoc(fdb,"usuarios",uid,"imagens",id));if(s.exists()){imgCache[id]=s.data().data;return imgCache[id]}}catch(e){}
+  return null;
+}
+async function guardarImagem(dataUrl,idDado){
+  const id=idDado||("img-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  await setDoc(fsDoc(fdb,"usuarios",uid,"imagens",id),{data:dataUrl});
+  imgCache[id]=dataUrl;return id;
+}
+async function apagarImagem(id){delete imgCache[id];await deleteDoc(fsDoc(fdb,"usuarios",uid,"imagens",id))}
+function desenhar(img,max,q){const esc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*esc);c.height=Math.round(img.height*esc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);return c.toDataURL("image/jpeg",q)}
+function abrirImagem(file){return new Promise((ok,erro)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>ok(img);img.onerror=erro;img.src=r.result};r.onerror=erro;r.readAsDataURL(file)})}
+async function reduzirAte(file){
+  // cada imagem precisa caber num documento do Firestore (limite de 1 MB)
+  const img=await abrirImagem(file);
+  for(const [max,q] of [[1200,.8],[1000,.75],[900,.7],[700,.65],[500,.6]]){const u=desenhar(img,max,q);if(u.length<700000)return u}
+  return desenhar(img,400,.55);
+}
+
+/* ---------- backup ---------- */
+async function importarBackup(file){
+  const bt=$("#importar-bk");
+  let dados;
+  try{dados=JSON.parse(await file.text())}catch(e){status("Esse arquivo não é um backup do painel.");return}
+  if(!dados||dados.app!=="painel-da-vida"||!dados.docs){status("Esse arquivo não é um backup do painel.");return}
+  status("Importando o backup");
+  try{
+    for(const [id,url] of Object.entries(dados.imagens||{})){await guardarImagem(url,id)}
+    for(const [id,d] of Object.entries(dados.docs)){cache[id]=d;await setDoc(fsDoc(fdb,"usuarios",uid,"painel",id),d)}
+    renderTudo();status("Backup importado");
+  }catch(e){status("Não foi possível importar o backup. Tente de novo com a internet ligada.")}
+}
+
+/* ---------- login ---------- */
+const provedor=new GoogleAuthProvider();
+async function entrar(){
+  $("#login-erro").textContent="";
+  try{await signInWithPopup(auth,provedor)}
+  catch(e){
+    if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"||e.code==="auth/popup-closed-by-user"&&window.matchMedia("(display-mode: standalone)").matches)){await signInWithRedirect(auth,provedor);return}
+    if(e&&e.code==="auth/popup-closed-by-user")return;
+    $("#login-erro").textContent="Não foi possível entrar ("+(e&&e.code||"erro")+"). Tente de novo.";
+  }
+}
+$("#entrar").addEventListener("click",entrar);
+$("#sair").addEventListener("click",async()=>{if($("#sair").dataset.ok!=="1"){$("#sair").dataset.ok="1";$("#sair").textContent="Confirmar saída";setTimeout(()=>{$("#sair").dataset.ok="";$("#sair").textContent="Sair"},4000);return}await signOut(auth);location.reload()});
+$("#importar-bk").addEventListener("click",()=>$("#arquivo-bk").click());
+$("#arquivo-bk").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importarBackup(f)});
+getRedirectResult(auth).catch(e=>{$("#login-erro").textContent="Não foi possível entrar ("+(e&&e.code||"erro")+")."});
+
+onAuthStateChanged(auth,async u=>{
+  if(!u){uid=null;col=null;$("#login").hidden=false;$("#app").hidden=true;return}
+  uid=u.uid;$("#login").hidden=true;$("#app").hidden=false;$("#exportar").hidden=false;
+  col={
+    doc:id=>({set:d=>setDoc(fsDoc(fdb,"usuarios",uid,"painel",id),d)}),
+    get:async()=>{const s=await getDocs(collection(fdb,"usuarios",uid,"painel"));return{empty:s.empty,docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}}
+  };
+  status("Carregando");
+  try{
+    const snap=await col.get();
+    snap.docs.forEach(d=>{cache[d.id]=JSON.parse(JSON.stringify(d.data()||{}))});
+    renderTudo();status("Tudo salvo");
+  }catch(e){renderTudo();status("Sem conexão: mostrando o que está guardado neste aparelho.")}
+});
+
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
+
+</script>
+</body>
+</html>
