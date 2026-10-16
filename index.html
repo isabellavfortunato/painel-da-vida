@@ -151,6 +151,13 @@ button{font:inherit;cursor:pointer}
 .desafio .des-titulo{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;letter-spacing:.01em;border:0;padding:4px 2px;border-bottom:1px solid var(--line);border-radius:0;resize:none;min-height:0;overflow:hidden}
 .desafio{padding:18px}
 .desafio textarea{min-height:110px;font-size:15px}
+.desafio.fechado{padding:0;border-top-width:4px}
+.des-cab{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:transparent;border:0;padding:18px 20px;text-align:left;color:var(--fg);border-radius:0 0 12px 12px}
+.des-cab:hover .des-seta{transform:translateX(3px)}
+.des-nome{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;letter-spacing:.01em;min-width:0}
+.des-nome.sem-nome{color:var(--muted);font-style:italic}
+.des-seta{font-size:24px;color:var(--accent);transition:transform .15s ease;flex:none}
+.desafio .acoes button.fechar{color:var(--accent);font-weight:600;text-decoration:none}
 .desafio .acoes{display:flex;justify-content:flex-end;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
 .desafio .acoes button{background:transparent;border:0;color:var(--muted);padding:4px 6px;text-decoration:underline}
 .desafio .acoes button.sim{color:var(--accent);font-weight:600}
@@ -508,17 +515,26 @@ $("#mes-ant").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.g
 $("#mes-prox").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.getMonth()+1,1);renderCal()});
 
 /* ---------- 6. desafios ---------- */
+const desAbertos=new Set();
 function renderDes(){
   const d=get("desafios",{itens:[]}),box=$("#des-lista");box.innerHTML="";
   if(!d.itens.length){box.innerHTML=`<div class="vazio-des">Nenhum desafio ainda. Clique em Novo desafio para criar o primeiro card.</div>`;return}
   d.itens.forEach((it,i)=>{
     const c=document.createElement("article");c.className="desafio";
-    c.innerHTML=`<textarea class="des-titulo" rows="1" id="dt-${it.id}" placeholder="Nome do desafio"></textarea><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button></div>`;
+    if(!desAbertos.has(it.id)){
+      c.classList.add("fechado");
+      c.innerHTML=`<button class="des-cab" aria-expanded="false"><span class="des-nome"></span><span class="des-seta" aria-hidden="true">›</span></button>`;
+      const nm=c.querySelector(".des-nome");nm.textContent=(it.titulo||"").trim()||"Desafio sem nome";if(!(it.titulo||"").trim())nm.classList.add("sem-nome");
+      c.firstChild.addEventListener("click",()=>{desAbertos.add(it.id);renderDes();const el=document.getElementById("dx-"+it.id);if(el)el.focus()});
+      box.appendChild(c);return;
+    }
+    c.innerHTML=`<textarea class="des-titulo" rows="1" id="dt-${it.id}" placeholder="Nome do desafio"></textarea><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button><button class="fechar">Fechar</button></div>`;
     const [ti,tx,ac]=c.children;ti.value=it.titulo||"";tx.value=it.texto||"";
     const ajTi=()=>{ti.style.height="auto";ti.style.height=ti.scrollHeight+"px"};
     ti.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();tx.focus()}});
     ti.addEventListener("input",()=>{ti.value=ti.value.replace(/\n/g," ");it.titulo=ti.value;save("desafios");ajTi()});
     tx.addEventListener("input",()=>{it.texto=tx.value;save("desafios");autoAltura(tx)});
+    ac.querySelector(".fechar").addEventListener("click",()=>{desAbertos.delete(it.id);renderDes()});
     ac.querySelector(".rm").addEventListener("click",()=>{
       ac.innerHTML=`<span>Excluir este desafio?</span><button class="sim">Sim, excluir</button><button class="nao">Cancelar</button>`;
       ac.querySelector(".sim").onclick=()=>{d.itens.splice(i,1);save("desafios");renderDes()};
@@ -527,7 +543,7 @@ function renderDes(){
     box.appendChild(c);ajTi();autoAltura(tx);
   });
 }
-$("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
+$("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});desAbertos.add(id);save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
 
 /* ---------- início ---------- */
 const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["diario","Todos os dias","Diário de gratidão"],["desafios","Compromissos","Desafios comigo mesma"]];
