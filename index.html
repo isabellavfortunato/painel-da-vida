@@ -128,6 +128,16 @@ button{font:inherit;cursor:pointer}
 .foto button{position:absolute;top:8px;right:8px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:4px 10px;font-size:12px}
 .subir{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .subir small{color:var(--muted)}
+.habilidades{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.sub-secao{font-family:var(--display);font-weight:600;font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0;color:var(--accent);letter-spacing:.01em}
+.hab-lista{display:flex;flex-direction:column;width:100%;border-top:1px solid var(--line)}
+.hab{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
+.hab input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;margin:0}
+.hab input[type=text]{border:0;border-radius:6px;padding:7px 6px;min-width:0}
+.hab.feito input[type=text]{text-decoration:line-through;color:var(--muted)}
+.hab button{background:transparent;border:0;color:var(--muted);font-size:13px;padding:4px 6px;opacity:0;transition:opacity .15s}
+.hab:hover button,.hab:focus-within button{opacity:1}
+@media (hover:none){.hab button{opacity:1}}
 .vazio-mood{border:1.5px dashed var(--accent-mid);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
 
 /* 5. Diário */
@@ -257,6 +267,11 @@ button{font:inherit;cursor:pointer}
     <div class="cab">
       <div class="rotulo">Identidade</div>
       <h2>A pessoa que eu quero ser para atingir tudo o que eu quero</h2>
+    </div>
+    <div class="habilidades">
+      <h3 class="sub-secao">Quais habilidades eu tenho que ter?</h3>
+      <div class="hab-lista" id="hab-lista"></div>
+      <button class="btn sec" id="hab-nova">Adicionar característica</button>
     </div>
     <textarea id="pessoa-texto" placeholder="Como pensa, como age, quais hábitos tem e como trata a si mesma e aos outros a pessoa que vai viver essa vida?"></textarea>
     <div class="subir">
@@ -442,7 +457,26 @@ function renderAreas(){
 }
 
 /* ---------- 4. pessoa ---------- */
+function renderHab(focoId){
+  const d=get("pessoa",{texto:"",imagens:[]});
+  if(!Array.isArray(d.habilidades))d.habilidades=[];
+  while(d.habilidades.length<5)d.habilidades.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:"",f:false});
+  const box=$("#hab-lista");box.innerHTML="";
+  d.habilidades.forEach((h,i)=>{
+    const row=document.createElement("div");row.className="hab"+(h.f?" feito":"");
+    row.innerHTML=`<input type="checkbox" aria-label="Característica conquistada"><input type="text" id="hab-${h.id}" placeholder="Escreva uma característica ou habilidade"><button aria-label="Remover característica">remover</button>`;
+    const [cb,tx,rm]=row.children;cb.checked=!!h.f;tx.value=h.t||"";
+    cb.addEventListener("change",()=>{h.f=cb.checked;row.classList.toggle("feito",h.f);save("pessoa")});
+    tx.addEventListener("input",()=>{h.t=tx.value;save("pessoa")});
+    tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.splice(i+1,0,n);save("pessoa");renderHab(n.id)}});
+    rm.addEventListener("click",()=>{d.habilidades.splice(i,1);save("pessoa");renderHab()});
+    box.appendChild(row);
+  });
+  if(focoId){const el=document.getElementById("hab-"+focoId);if(el)el.focus()}
+}
+$("#hab-nova").addEventListener("click",()=>{const d=get("pessoa",{texto:"",imagens:[]});if(!Array.isArray(d.habilidades))d.habilidades=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.push(n);save("pessoa");renderHab(n.id)});
 function renderPessoa(){
+  renderHab();
   const d=get("pessoa",{texto:"",imagens:[]});d.imagens=d.imagens||[];
   const t=$("#pessoa-texto");t.value=d.texto||"";autoAltura(t);
   const box=$("#mood");
