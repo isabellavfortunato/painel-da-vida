@@ -64,6 +64,14 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px
 .status{font-size:13px;color:var(--muted)}
 .topo-dir{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .topo-dir .btn{font-size:13px;padding:7px 14px}
+.versoes-fundo{position:fixed;inset:0;background:rgba(30,15,22,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:max(40px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.versoes-caixa{background:var(--surface);border-radius:16px;padding:24px;max-width:520px;width:100%;display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4)}
+.versoes-caixa h2{margin:0}
+.versoes-caixa p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.versao{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.versao b{font-weight:600}
+.versao small{display:block;color:var(--muted);font-size:13px}
+.versao .btn{font-size:13px;padding:6px 14px}
 section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(18px,3.5vw,32px);display:flex;flex-direction:column;gap:18px;min-width:0}
 .rotulo{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
 h2{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.2vw,38px);line-height:1.1;margin:4px 0 0;letter-spacing:.01em;text-wrap:balance}
@@ -225,7 +233,7 @@ button{font:inherit;cursor:pointer}
 <div class="wrap">
   <header class="topo">
     <h1>Painel da vida</h1>
-    <div class="topo-dir"><span class="status" id="status" aria-live="polite">Carregando</span><button class="btn linha" id="importar-bk">Importar backup</button><input type="file" id="arquivo-bk" accept="application/json,.json" hidden><button class="btn linha" id="exportar" hidden>Exportar meus dados</button><button class="btn linha" id="sair">Sair</button></div>
+    <div class="topo-dir"><span class="status" id="status" aria-live="polite">Carregando</span><button class="btn linha" id="versoes">Versões salvas</button><button class="btn linha" id="importar-bk">Importar backup</button><input type="file" id="arquivo-bk" accept="application/json,.json" hidden><button class="btn linha" id="exportar" hidden>Exportar meus dados</button><button class="btn linha" id="sair">Sair</button></div>
   </header>
 
   <nav class="tiles" id="tiles" aria-label="Partes do painel"></nav>
@@ -354,16 +362,21 @@ function lsGet(id){return null}
 function lsSet(id,d){}
 function get(id,def){if(!cache[id]){cache[id]=lsGet(id)||def}return cache[id]}
 function status(t){$("#status").textContent=t}
+let carregado=false;const pendentes=new Set();
+const horaAgora=()=>new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 function save(id){
   lsSet(id,cache[id]);
   clearTimeout(timers[id]);
-  if(!col){return}
-  status("Salvando");
+  if(!col||!carregado){return}
+  status("Salvando");pendentes.add(id);
   timers[id]=setTimeout(async()=>{
-    try{await col.doc(id).set(cache[id]);status("Tudo salvo")}
-    catch(e){status("Sem conexão: as alterações serão enviadas quando a internet voltar.")}
+    const enviar=()=>col.doc(id).set(cache[id]);
+    try{await enviar()}
+    catch(e){status("Não consegui salvar agora. Tentando de novo.");try{await new Promise(r=>setTimeout(r,3000));await enviar()}catch(e2){status("Sem conexão: as alterações serão enviadas quando a internet voltar.");return}}
+    pendentes.delete(id);if(!pendentes.size)status("Tudo salvo às "+horaAgora());
   },700);
 }
+window.addEventListener("beforeunload",e=>{if(pendentes.size){e.preventDefault();e.returnValue=""}});
 
 /* ---------- 1. vida ---------- */
 function autoAltura(t){t.style.height="auto";t.style.height=Math.max(t.scrollHeight+2,120)+"px"}
@@ -760,6 +773,58 @@ async function importarBackup(file){
   }catch(e){status("Não foi possível importar o backup. Tente de novo com a internet ligada.")}
 }
 
+/* ---------- versões salvas (cópia automática diária) ---------- */
+const MANTER=60;
+const idHoje=()=>{const h=new Date();return h.getFullYear()+"-"+pad(h.getMonth()+1)+"-"+pad(h.getDate())};
+const copiaCache=()=>{const o={};Object.keys(cache).forEach(k=>{o[k]=JSON.parse(JSON.stringify(cache[k]))});return o};
+async function backupDoDia(){
+  if(!Object.keys(cache).length)return;
+  const ref=fsDoc(fdb,"usuarios",uid,"backups",idHoje());
+  const s=await getDoc(ref);if(s.exists())return;
+  await setDoc(ref,{criadoEm:Date.now(),docs:copiaCache()});
+  const todos=(await getDocs(collection(fdb,"usuarios",uid,"backups"))).docs.map(d=>d.id).sort();
+  for(const id of todos.slice(0,Math.max(0,todos.length-MANTER)))await deleteDoc(fsDoc(fdb,"usuarios",uid,"backups",id));
+}
+function resumoVersao(d){
+  const l=d.docs&&d.docs.lista;const n=l&&Array.isArray(l.itens)?l.itens.filter(i=>(i.t||"").trim()).length:0;
+  const dias=Object.keys(d.docs||{}).filter(k=>k.startsWith("d-")&&((d.docs[k]||{}).texto||"").trim()).length;
+  const des=d.docs&&d.docs.desafios&&Array.isArray(d.docs.desafios.itens)?d.docs.desafios.itens.length:0;
+  return n+" itens na lista de 101, "+dias+(dias===1?" dia":" dias")+" no diário e "+des+(des===1?" desafio":" desafios");
+}
+async function abrirVersoes(){
+  const fundo=document.createElement("div");fundo.className="versoes-fundo";
+  fundo.innerHTML=`<div class="versoes-caixa" role="dialog" aria-label="Versões salvas"><h2>Versões salvas</h2><p>Todos os dias, na primeira vez que você abre o painel, ele guarda uma cópia de tudo o que está escrito. Se algo sumir, escolha o dia e restaure. Antes de restaurar, o painel guarda uma cópia do estado atual, para você poder voltar atrás.</p><div id="versoes-lista"><p>Carregando as versões...</p></div><button class="btn linha" id="versoes-fechar" style="align-self:flex-end">Fechar</button></div>`;
+  document.body.appendChild(fundo);
+  const fechar=()=>fundo.remove();
+  fundo.addEventListener("click",e=>{if(e.target===fundo)fechar()});
+  fundo.querySelector("#versoes-fechar").onclick=fechar;
+  const box=fundo.querySelector("#versoes-lista");
+  try{
+    const ds=(await getDocs(collection(fdb,"usuarios",uid,"backups"))).docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.criadoEm-a.criadoEm);
+    if(!ds.length){box.innerHTML=`<p>Ainda não há versões salvas. A primeira é criada hoje, logo que os seus dados carregam.</p>`;return}
+    box.innerHTML="";
+    ds.forEach(v=>{
+      const el=document.createElement("div");el.className="versao";
+      const quando=new Date(v.criadoEm).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      el.innerHTML=`<div><b></b><small></small></div><button class="btn sec">Restaurar</button>`;
+      el.querySelector("b").textContent=(v.id.startsWith("antes-")?"Antes de uma restauração, ":"")+quando;
+      el.querySelector("small").textContent=resumoVersao(v);
+      const bt=el.querySelector("button");
+      bt.onclick=async()=>{
+        if(bt.dataset.ok!=="1"){bt.dataset.ok="1";bt.textContent="Confirmar restauração";return}
+        bt.disabled=true;bt.textContent="Restaurando";
+        try{
+          await setDoc(fsDoc(fdb,"usuarios",uid,"backups","antes-"+Date.now()),{criadoEm:Date.now(),docs:copiaCache()});
+          for(const [id,d] of Object.entries(v.docs||{})){cache[id]=d;await setDoc(fsDoc(fdb,"usuarios",uid,"painel",id),d)}
+          renderTudo();fechar();status("Versão de "+quando+" restaurada");
+        }catch(e){bt.disabled=false;bt.textContent="Não foi possível restaurar. Tente de novo."}
+      };
+      box.appendChild(el);
+    });
+  }catch(e){box.innerHTML=`<p>Não consegui carregar as versões agora. Verifique a internet e tente de novo.</p>`}
+}
+$("#versoes").addEventListener("click",abrirVersoes);
+
 /* ---------- login ---------- */
 const provedor=new GoogleAuthProvider();
 async function entrar(){
@@ -786,10 +851,13 @@ onAuthStateChanged(auth,async u=>{
   };
   status("Carregando");
   try{
-    const snap=await col.get();
+    let snap=null;
+    for(let t=0;t<4&&!snap;t++){try{snap=await col.get()}catch(e){status("Não consegui carregar os seus dados. Tentando de novo.");await new Promise(r=>setTimeout(r,2500))}}
+    if(!snap){status("Não consegui carregar os seus dados. Recarregue a página quando a internet estiver boa; nada foi alterado.");return}
     snap.docs.forEach(d=>{cache[d.id]=JSON.parse(JSON.stringify(d.data()||{}))});
-    renderTudo();status("Tudo salvo");
-  }catch(e){renderTudo();status("Sem conexão: mostrando o que está guardado neste aparelho.")}
+    carregado=true;renderTudo();status("Tudo salvo");
+    backupDoDia().catch(()=>{});
+  }catch(e){status("Não consegui carregar os seus dados. Recarregue a página; nada foi alterado.")}
 });
 
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
