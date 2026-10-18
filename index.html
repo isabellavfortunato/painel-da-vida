@@ -122,8 +122,8 @@ button{font:inherit;cursor:pointer}
 .notas button.ate{background:var(--accent-soft);color:var(--fg);border-color:var(--accent-soft)}
 
 /* 4. Pessoa */
-.mood{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-items:start}
-.foto{position:relative;cursor:grab;transition:opacity .15s,outline-color .15s;outline:2px solid transparent;outline-offset:2px;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
+.mood{columns:5 110px;column-gap:8px}
+.foto{break-inside:avoid;margin-bottom:8px;position:relative;cursor:grab;transition:opacity .15s,outline-color .15s;outline:2px solid transparent;outline-offset:2px;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
 .foto img{display:block;width:100%;pointer-events:none;-webkit-user-drag:none}
 .foto.arrastando{opacity:.35}
 .foto.alvo{outline-color:var(--accent)}
@@ -619,7 +619,7 @@ function resumo(id){
   if(id==="vida"){const t=(get("vida",{texto:""}).texto||"").trim();return t?`<span class="resumo">${esc(t)}</span>`:`<span class="resumo">Escreva aqui a descrição da vida que você quer ter.</span>`}
   if(id==="cem"){const d=lista();return `<div><span class="num menor">${d.itens.filter(i=>i.f).length} de 101</span></div>`}
   if(id==="areas"){const n=areas().itens.filter(a=>a.nota>0).map(a=>a.nota);const m=n.length?(n.reduce((x,y)=>x+y,0)/n.length).toFixed(1).replace(".",","):"–";return `<div><span class="num">${m}</span><span class="resumo">média de ${n.length} de 10 áreas avaliadas</span></div>`}
-  if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const q=(d.imagens||[]).length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"imagem":"imagens"} no moodboard</span></div>`}
+  if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const hs=(d.habilidades||[]).filter(h=>(h.t||"").trim());const q=hs.filter(h=>h.f).length;return `<div><span class="num menor">${q} de ${hs.length}</span><span class="resumo">habilidades conquistadas</span></div>`}
   if(id==="diario"){let q=0;const n=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();for(let i=1;i<=n;i++)if(temTexto(chaveDia(new Date(hoje.getFullYear(),hoje.getMonth(),i))))q++;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"dia registrado":"dias registrados"} em ${MESES[hoje.getMonth()]}</span></div>`}
   if(id==="desafios"){const q=get("desafios",{itens:[]}).itens.length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"desafio criado":"desafios criados"}</span></div>`}
 }
