@@ -122,10 +122,10 @@ button{font:inherit;cursor:pointer}
 .notas button.ate{background:var(--accent-soft);color:var(--fg);border-color:var(--accent-soft)}
 
 /* 4. Pessoa */
-.mood{columns:2 160px;column-gap:12px}
-.foto{break-inside:avoid;margin-bottom:12px;position:relative;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
+.mood{columns:5 110px;column-gap:8px}
+.foto{break-inside:avoid;margin-bottom:8px;position:relative;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
 .foto img{display:block;width:100%}
-.foto button{position:absolute;top:8px;right:8px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:4px 10px;font-size:12px}
+.foto button{position:absolute;top:4px;right:4px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:2px 8px;font-size:11px}
 .subir{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .subir small{color:var(--muted)}
 .habilidades{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
@@ -273,13 +273,13 @@ button{font:inherit;cursor:pointer}
       <div class="hab-lista" id="hab-lista"></div>
       <button class="btn sec" id="hab-nova">Adicionar característica</button>
     </div>
-    <textarea id="pessoa-texto" placeholder="Como pensa, como age, quais hábitos tem e como trata a si mesma e aos outros a pessoa que vai viver essa vida?"></textarea>
     <div class="subir">
       <label class="btn" for="pessoa-arquivo" tabindex="0">Adicionar imagens</label>
       <input type="file" id="pessoa-arquivo" accept="image/*" multiple hidden>
       <small id="pessoa-aviso">Imagens de referência para o seu moodboard.</small>
     </div>
     <div id="mood"></div>
+    <textarea id="pessoa-texto" placeholder="Como pensa, como age, quais hábitos tem e como trata a si mesma e aos outros a pessoa que vai viver essa vida?"></textarea>
   </section>
 
   <section id="diario" hidden>
