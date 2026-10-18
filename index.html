@@ -122,9 +122,16 @@ button{font:inherit;cursor:pointer}
 .notas button.ate{background:var(--accent-soft);color:var(--fg);border-color:var(--accent-soft)}
 
 /* 4. Pessoa */
-.mood{columns:5 110px;column-gap:8px}
-.foto{break-inside:avoid;margin-bottom:8px;position:relative;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
-.foto img{display:block;width:100%}
+.mood{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-items:start}
+.foto{position:relative;cursor:grab;transition:opacity .15s,outline-color .15s;outline:2px solid transparent;outline-offset:2px;border-radius:10px;overflow:hidden;background:var(--accent-soft)}
+.foto img{display:block;width:100%;pointer-events:none;-webkit-user-drag:none}
+.foto.arrastando{opacity:.35}
+.foto.alvo{outline-color:var(--accent)}
+.mover{position:absolute;left:4px;bottom:4px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.foto:hover .mover,.foto:focus-within .mover{opacity:1}
+@media (hover:none){.mover{opacity:1}}
+.foto .mover button{position:static;padding:2px 9px;font-size:13px;line-height:1.2}
+.foto .mover button:disabled{opacity:.35}
 .foto button{position:absolute;top:4px;right:4px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:2px 8px;font-size:11px}
 .subir{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .subir small{color:var(--muted)}
@@ -485,13 +492,21 @@ function renderPessoa(){
   box.innerHTML=`<div class="mood"></div>`;const m=box.firstChild;
   d.imagens.forEach((im,i)=>{
     const f=document.createElement("div");f.className="foto";
-    f.innerHTML=`<img alt="Imagem do moodboard"><button>Remover</button>`;
+    f.innerHTML=`<img alt="Imagem do moodboard"><div class="mover"><button data-m="-1" aria-label="Mover para antes"${i===0?" disabled":""}>‹</button><button data-m="1" aria-label="Mover para depois"${i===d.imagens.length-1?" disabled":""}>›</button></div><button>Remover</button>`;
     const imgEl=f.firstChild;if(im.url||im.data){imgEl.src=im.url||im.data}else{carregarImagem(im.id).then(u=>{if(u)imgEl.src=u})}
     f.lastChild.addEventListener("click",async()=>{
       if(f.lastChild.dataset.ok!=="1"){f.lastChild.dataset.ok="1";f.lastChild.textContent="Confirmar remoção";return}
       d.imagens.splice(i,1);save("pessoa");renderPessoa();
       if(im.id){try{await apagarImagem(im.id)}catch(e){}}
     });
+    const mover=(de,para)=>{if(para<0||para>=d.imagens.length||de===para)return;const [x]=d.imagens.splice(de,1);d.imagens.splice(para,0,x);save("pessoa");renderPessoa()};
+    f.querySelectorAll(".mover button").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();mover(i,i+Number(b.dataset.m))}));
+    f.draggable=true;
+    f.addEventListener("dragstart",e=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(i));f.classList.add("arrastando")});
+    f.addEventListener("dragend",()=>{f.classList.remove("arrastando");m.querySelectorAll(".alvo").forEach(x=>x.classList.remove("alvo"))});
+    f.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="move";f.classList.add("alvo")});
+    f.addEventListener("dragleave",()=>f.classList.remove("alvo"));
+    f.addEventListener("drop",e=>{e.preventDefault();f.classList.remove("alvo");const de=Number(e.dataTransfer.getData("text/plain"));if(!isNaN(de))mover(de,i)});
     m.appendChild(f);
   });
 }
