@@ -658,11 +658,14 @@ let uidT=null,tProj={},pararT=null,erroT="";
 const pad2=n=>String(n).padStart(2,"0");
 function relogio(ms){const s=Math.max(0,Math.floor(ms/1000));return pad2(Math.floor(s/3600))+":"+pad2(Math.floor(s%3600/60))+":"+pad2(s%60)}
 function curto(ms){if(ms<60000)return ms<1000?"0 min":Math.round(ms/1000)+" s";const m=Math.round(ms/60000);if(m<60)return m+" min";const h=Math.floor(m/60),r=m%60;return h+" h"+(r?" "+r+" min":"")}
+const visivelT=p=>p&&p.painel!==false;
+const escolhivelT=p=>visivelT(p)&&!p.arquivado;
 function totalT(p){let t=0;for(const x of p.sessoes||[])t+=x.fim-x.inicio;return t+(p.ativo?Date.now()-p.ativo:0)}
-const corpoT=p=>({nome:p.nome,tipo:p.tipo||"cronometro",meta:Number(p.meta)||0,criadoEm:Number(p.criadoEm)||Date.now(),sessoes:p.sessoes||[],ativo:p.ativo||null});
+// projeto novo criado pelo Painel: já compartilhado, e o tipo (cronômetro ou timer) é escolhido no Tempo dos projetos
+const corpoNovoT=p=>({nome:p.nome,tipo:"",meta:0,criadoEm:Date.now(),sessoes:[],ativo:null,painel:true,arquivado:false});
 const docT=id=>fsDoc(fdbT,"usuarios",uidT,"projetos",id);
 function atualizarTempos(){
-  document.querySelectorAll("[data-tempo]").forEach(el=>{const p=tProj[el.dataset.tempo];el.textContent=p?curto(totalT(p)):"";el.classList.toggle("rodando",!!(p&&p.ativo))});
+  document.querySelectorAll("[data-tempo]").forEach(el=>{const p=visivelT(tProj[el.dataset.tempo])?tProj[el.dataset.tempo]:null;el.textContent=p?curto(totalT(p)):"";el.classList.toggle("rodando",!!(p&&p.ativo))});
   document.querySelectorAll("[data-tempo-rel]").forEach(el=>{const p=tProj[el.dataset.tempoRel];if(p)el.textContent=relogio(totalT(p))});
 }
 setInterval(atualizarTempos,1000);
@@ -696,14 +699,15 @@ onAuthStateChanged(authT,u=>{
 function caixaTempo(it,d){
   const b=document.createElement("div");b.className="tempo-box";
   if(!uidT){b.innerHTML=`<span>Conecte o Tempo dos projetos, logo acima dos desafios, para cronometrar este desafio.</span>`;return b}
-  const p=it.tempoId&&tProj[it.tempoId];
+  const ligado=it.tempoId&&tProj[it.tempoId];
+  const p=visivelT(ligado)?ligado:null;
   if(p){
     b.innerHTML=`<div class="tempo-linha" style="justify-content:space-between"><span class="rel" data-tempo-rel="${it.tempoId}">${relogio(totalT(p))}</span><span class="proj"></span></div>
     <div class="tempo-linha"><button class="btn" data-acao="alternar">${p.ativo?"Pausar":"Iniciar"}</button><a href="${TEMPO_URL}" target="_blank" rel="noopener">Abrir no Tempo dos projetos</a><button class="btn linha" data-acao="desligar" style="margin-left:auto">Desligar</button></div>`;
     b.querySelector(".proj").textContent="Projeto: "+p.nome;
   }else{
-    const ids=Object.keys(tProj).sort((x,y)=>(tProj[x].nome||"").localeCompare(tProj[y].nome||""));
-    b.innerHTML=`<span>${it.tempoId?"O projeto ligado a este desafio foi excluído no Tempo dos projetos. ":""}Ligue este desafio a um projeto para acompanhar o tempo dedicado a ele.</span>
+    const ids=Object.keys(tProj).filter(id=>escolhivelT(tProj[id])).sort((x,y)=>(tProj[x].nome||"").localeCompare(tProj[y].nome||""));
+    b.innerHTML=`<span>${it.tempoId?(ligado?"O projeto ligado a este desafio deixou de ser compartilhado com o Painel no Tempo dos projetos. ":"O projeto ligado a este desafio foi excluído no Tempo dos projetos. "):""}Ligue este desafio a um projeto para acompanhar o tempo dedicado a ele.</span>
     <div class="tempo-linha"><button class="btn" data-acao="criar">Criar projeto com o nome do desafio</button></div>
     ${ids.length?`<div class="tempo-linha"><select aria-label="Projeto existente"><option value="">Ou escolha um projeto existente</option></select><button class="btn linha" data-acao="ligar">Ligar</button></div>`:""}`;
     const sel=b.querySelector("select");if(sel)ids.forEach(id=>{const o=document.createElement("option");o.value=id;o.textContent=tProj[id].nome||"Sem nome";sel.appendChild(o)});
@@ -720,10 +724,10 @@ function caixaTempo(it,d){
           if(q.tipo==="timer"&&q.meta>0&&feito>=q.meta){ac.textContent="Timer concluído";return}
           q.ativo=agora;
         }
-        await setDoc(docT(it.tempoId),corpoT(q));
+        await setDoc(docT(it.tempoId),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
       }else if(acao==="criar"){
         const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-        await setDoc(docT(id),corpoT({nome:(it.titulo||"").trim()||"Desafio",criadoEm:Date.now()}));
+        await setDoc(docT(id),corpoNovoT({nome:(it.titulo||"").trim()||"Desafio"}));
         it.tempoId=id;save("desafios");renderDes();
       }else if(acao==="ligar"){
         const v=b.querySelector("select").value;if(!v)return;it.tempoId=v;save("desafios");renderDes();
