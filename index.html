@@ -298,6 +298,24 @@ button{font:inherit;cursor:pointer}
     <textarea id="pessoa-texto" placeholder="Como pensa, como age, quais hábitos tem e como trata a si mesma e aos outros a pessoa que vai viver essa vida?"></textarea>
   </section>
 
+  <section id="percebida" hidden>
+    <div class="cab">
+      <div class="rotulo">Imagem</div>
+      <h2>Como eu quero ser percebida</h2>
+    </div>
+    <div class="habilidades">
+      <h3 class="sub-secao">Como eu quero que as pessoas me descrevam?</h3>
+      <div class="hab-lista" id="perc-hab-lista"></div>
+      <button class="btn sec" id="perc-hab-nova">Adicionar característica</button>
+    </div>
+    <div class="subir">
+      <label class="btn" for="percebida-arquivo" tabindex="0">Adicionar imagens</label>
+      <input type="file" id="percebida-arquivo" accept="image/*" multiple hidden>
+      <small id="percebida-aviso">Imagens de referência para o seu moodboard.</small>
+    </div>
+    <div id="perc-mood"></div>
+    <textarea id="percebida-texto" placeholder="Como as pessoas falam de você quando você não está presente? O que sentem depois de conversar com você? Que palavras você quer que venham à cabeça delas?"></textarea>
+  </section>
   <section id="diario" hidden>
     <div class="cab">
       <div class="rotulo">Todos os dias</div>
@@ -533,13 +551,13 @@ async function exportar(){
     if(col){const snap=await col.get();snap.docs.forEach(d=>{docs[d.id]=JSON.parse(JSON.stringify(d.data()||{}))})}
     Object.keys(docs).forEach(k=>{const d=docs[k];if(d&&typeof d.texto==="string"&&!d.texto.trim()&&Object.keys(d).length===1)delete docs[k]});
     const imagens={};
-    if(docs.pessoa&&Array.isArray(docs.pessoa.imagens)){
+    for(const sec of ["pessoa","percebida"])if(docs[sec]&&Array.isArray(docs[sec].imagens)){
       const ids=[];
-      for(const [i,im] of docs.pessoa.imagens.entries()){
-        const id="img"+(i+1)+"-"+Date.now().toString(36);
+      for(const [i,im] of docs[sec].imagens.entries()){
+        const id="img-"+sec+(i+1)+"-"+Date.now().toString(36);
         try{imagens[id]=im.data?im.data:(im.url?await reduzir(await (await fetch(im.url)).blob()):await carregarImagem(im.id));if(imagens[id])ids.push({id})}catch(e){}
       }
-      docs.pessoa.imagens=ids;
+      docs[sec].imagens=ids;
     }
     const json=JSON.stringify({app:"painel-da-vida",versao:1,exportadoEm:new Date().toISOString(),docs,imagens});
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([json],{type:"application/json"}));a.download="painel da vida backup "+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
@@ -562,6 +580,66 @@ $("#pessoa-arquivo").addEventListener("change",async e=>{
   save("pessoa");renderPessoa();
 });
 $(".subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#pessoa-arquivo").click()}});
+/* ---------- como eu quero ser percebida (mesma estrutura de A pessoa que eu quero ser) ---------- */
+function renderPercHab(focoId){
+  const d=get("percebida",{texto:"",imagens:[]});
+  if(!Array.isArray(d.habilidades))d.habilidades=[];
+  while(d.habilidades.length<6)d.habilidades.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:"",f:false});
+  const box=$("#perc-hab-lista");box.innerHTML="";
+  d.habilidades.forEach((h,i)=>{
+    const row=document.createElement("div");row.className="hab"+(h.f?" feito":"");
+    row.innerHTML=`<input type="checkbox" aria-label="Característica conquistada"><input type="text" id="perc-hab-${h.id}" placeholder="Escreva uma característica"><button aria-label="Remover característica">remover</button>`;
+    const [cb,tx,rm]=row.children;cb.checked=!!h.f;tx.value=h.t||"";
+    cb.addEventListener("change",()=>{h.f=cb.checked;row.classList.toggle("feito",h.f);save("percebida")});
+    tx.addEventListener("input",()=>{h.t=tx.value;save("percebida")});
+    tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.splice(i+1,0,n);save("percebida");renderPercHab(n.id)}});
+    rm.addEventListener("click",()=>{d.habilidades.splice(i,1);save("percebida");renderPercHab()});
+    box.appendChild(row);
+  });
+  if(focoId){const el=document.getElementById("perc-hab-"+focoId);if(el)el.focus()}
+}
+$("#perc-hab-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d.habilidades))d.habilidades=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.push(n);save("percebida");renderPercHab(n.id)});
+function renderPercebida(){
+  renderPercHab();
+  const d=get("percebida",{texto:"",imagens:[]});d.imagens=d.imagens||[];
+  const t=$("#percebida-texto");t.value=d.texto||"";autoAltura(t);
+  const box=$("#perc-mood");
+  if(!d.imagens.length){box.innerHTML=`<div class="vazio-mood">Seu moodboard aparece aqui. Use o botão acima para adicionar fotos, recortes e referências de como você quer ser percebida.</div>`;return}
+  box.innerHTML=`<div class="mood"></div>`;const m=box.firstChild;
+  d.imagens.forEach((im,i)=>{
+    const f=document.createElement("div");f.className="foto";
+    f.innerHTML=`<img alt="Imagem do moodboard"><div class="mover"><button data-m="-1" aria-label="Mover para antes"${i===0?" disabled":""}>‹</button><button data-m="1" aria-label="Mover para depois"${i===d.imagens.length-1?" disabled":""}>›</button></div><button>Remover</button>`;
+    const imgEl=f.firstChild;if(im.url||im.data){imgEl.src=im.url||im.data}else{carregarImagem(im.id).then(u=>{if(u)imgEl.src=u})}
+    f.lastChild.addEventListener("click",async()=>{
+      if(f.lastChild.dataset.ok!=="1"){f.lastChild.dataset.ok="1";f.lastChild.textContent="Confirmar remoção";return}
+      d.imagens.splice(i,1);save("percebida");renderPercebida();
+      if(im.id){try{await apagarImagem(im.id)}catch(e){}}
+    });
+    const mover=(de,para)=>{if(para<0||para>=d.imagens.length||de===para)return;const [x]=d.imagens.splice(de,1);d.imagens.splice(para,0,x);save("percebida");renderPercebida()};
+    f.querySelectorAll(".mover button").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();mover(i,i+Number(b.dataset.m))}));
+    f.draggable=true;
+    f.addEventListener("dragstart",e=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(i));f.classList.add("arrastando")});
+    f.addEventListener("dragend",()=>{f.classList.remove("arrastando");m.querySelectorAll(".alvo").forEach(x=>x.classList.remove("alvo"))});
+    f.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="move";f.classList.add("alvo")});
+    f.addEventListener("dragleave",()=>f.classList.remove("alvo"));
+    f.addEventListener("drop",e=>{e.preventDefault();f.classList.remove("alvo");const de=Number(e.dataTransfer.getData("text/plain"));if(!isNaN(de))mover(de,i)});
+    m.appendChild(f);
+  });
+}
+ligarTexto($("#percebida-texto"),"percebida","texto");
+$("#percebida-arquivo").addEventListener("change",async e=>{
+  const d=get("percebida",{texto:"",imagens:[]});d.imagens=d.imagens||[];
+  const files=[...e.target.files];e.target.value="";
+  for(const f of files){
+    $("#percebida-aviso").textContent="Enviando "+f.name;
+    try{
+      const id=await guardarImagem(await reduzirAte(f));d.imagens.push({id})
+    }catch(err){$("#percebida-aviso").textContent="Não consegui enviar "+f.name+". Tente uma imagem menor que 20 MB.";continue}
+  }
+  $("#percebida-aviso").textContent="Imagens de referência para o seu moodboard.";
+  save("percebida");renderPercebida();
+});
+$("#percebida .subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#percebida-arquivo").click()}});
 
 /* ---------- 5. diário ---------- */
 const hoje=new Date();hoje.setHours(0,0,0,0);
@@ -626,14 +704,14 @@ function renderDes(){
 $("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});desAbertos.add(id);save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
 
 /* ---------- início ---------- */
-const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["diario","Todos os dias","Diário de gratidão"],["desafios","Compromissos","Desafios comigo mesma"]];
-const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,diario:()=>{renderCal();renderDia()},desafios:renderDes};
+const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["percebida","Imagem","Como eu quero ser percebida"],["desafios","Compromissos","Desafios comigo mesma"]];
+const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,percebida:renderPercebida,desafios:renderDes};
 function resumo(id){
   if(id==="vida"){const t=(get("vida",{texto:""}).texto||"").trim();return t?`<span class="resumo">${esc(t)}</span>`:`<span class="resumo">Escreva aqui a descrição da vida que você quer ter.</span>`}
   if(id==="cem"){const d=lista();return `<div><span class="num menor">${d.itens.filter(i=>i.f).length} de 101</span></div>`}
   if(id==="areas"){const n=areas().itens.filter(a=>a.nota>0).map(a=>a.nota);const m=n.length?(n.reduce((x,y)=>x+y,0)/n.length).toFixed(1).replace(".",","):"–";return `<div><span class="num">${m}</span><span class="resumo">média de ${n.length} de 10 áreas avaliadas</span></div>`}
   if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const hs=(d.habilidades||[]).filter(h=>(h.t||"").trim());const q=hs.filter(h=>h.f).length;return `<div><span class="num menor">${q} de ${hs.length}</span><span class="resumo">habilidades conquistadas</span></div>`}
-  if(id==="diario"){let q=0;const n=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();for(let i=1;i<=n;i++)if(temTexto(chaveDia(new Date(hoje.getFullYear(),hoje.getMonth(),i))))q++;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"dia registrado":"dias registrados"} em ${MESES[hoje.getMonth()]}</span></div>`}
+  if(id==="percebida"){const d=get("percebida",{texto:"",imagens:[]});const hs=(d.habilidades||[]).filter(h=>(h.t||"").trim());const q=hs.filter(h=>h.f).length;return `<div><span class="num menor">${q} de ${hs.length}</span><span class="resumo">características conquistadas</span></div>`}
   if(id==="desafios"){const q=get("desafios",{itens:[]}).itens.length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"desafio criado":"desafios criados"}</span></div>`}
 }
 function renderTiles(){
@@ -647,7 +725,7 @@ function renderTiles(){
 function abrir(id){$("#tiles").hidden=true;$("#grade").hidden=false;SECOES.forEach(([s])=>{document.getElementById(s).hidden=s!==id});RENDER[id]();window.scrollTo(0,0)}
 function fechar(){$("#grade").hidden=true;$("#tiles").hidden=false;renderTiles();window.scrollTo(0,0)}
 $("#voltar").addEventListener("click",fechar);
-function renderTudo(){renderVida();renderCem();renderAreas();renderPessoa();renderCal();renderDia();renderDes();renderTiles();renderConexao()}
+function renderTudo(){renderVida();renderCem();renderAreas();renderPessoa();renderPercebida();renderCal();renderDia();renderDes();renderTiles();renderConexao()}
 
 /* ---------- ligação com o Tempo dos projetos ---------- */
 const TEMPO_URL="https://tempo-dos-projetos.firebaseapp.com/";
