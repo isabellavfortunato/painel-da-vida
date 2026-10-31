@@ -308,6 +308,16 @@ button{font:inherit;cursor:pointer}
       <div class="hab-lista" id="perc-hab-lista"></div>
       <button class="btn sec" id="perc-hab-nova">Adicionar característica</button>
     </div>
+    <div class="habilidades">
+      <h3 class="sub-secao">Meus valores</h3>
+      <div class="hab-lista" id="perc-valores-lista"></div>
+      <button class="btn sec" id="perc-valores-nova">Adicionar valor</button>
+    </div>
+    <div class="habilidades">
+      <h3 class="sub-secao">Posicionamentos</h3>
+      <div class="hab-lista" id="perc-posicionamentos-lista"></div>
+      <button class="btn sec" id="perc-posicionamentos-nova">Adicionar posicionamento</button>
+    </div>
     <div class="subir">
       <label class="btn" for="percebida-arquivo" tabindex="0">Adicionar imagens</label>
       <input type="file" id="percebida-arquivo" accept="image/*" multiple hidden>
@@ -581,6 +591,26 @@ $("#pessoa-arquivo").addEventListener("change",async e=>{
 });
 $(".subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#pessoa-arquivo").click()}});
 /* ---------- como eu quero ser percebida (mesma estrutura de A pessoa que eu quero ser) ---------- */
+function renderListaPerc(campo,texto,focoId){
+  const d=get("percebida",{texto:"",imagens:[]});
+  if(!Array.isArray(d[campo]))d[campo]=[];
+  const lista=d[campo];
+  while(lista.length<6)lista.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:"",f:false});
+  const box=$("#perc-"+campo+"-lista");box.innerHTML="";
+  lista.forEach((h,i)=>{
+    const row=document.createElement("div");row.className="hab"+(h.f?" feito":"");
+    row.innerHTML=`<input type="checkbox" aria-label="Marcar como conquistado"><input type="text" id="perc-${campo}-${h.id}" placeholder="${texto}"><button aria-label="Remover">remover</button>`;
+    const [cb,tx,rm]=row.children;cb.checked=!!h.f;tx.value=h.t||"";
+    cb.addEventListener("change",()=>{h.f=cb.checked;row.classList.toggle("feito",h.f);save("percebida")});
+    tx.addEventListener("input",()=>{h.t=tx.value;save("percebida")});
+    tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};lista.splice(i+1,0,n);save("percebida");renderListaPerc(campo,texto,n.id)}});
+    rm.addEventListener("click",()=>{lista.splice(i,1);save("percebida");renderListaPerc(campo,texto)});
+    box.appendChild(row);
+  });
+  if(focoId){const el=document.getElementById("perc-"+campo+"-"+focoId);if(el)el.focus()}
+}
+const LISTAS_PERC=[["valores","Escreva um valor"],["posicionamentos","Escreva um posicionamento"]];
+LISTAS_PERC.forEach(([campo,texto])=>$("#perc-"+campo+"-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d[campo]))d[campo]=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d[campo].push(n);save("percebida");renderListaPerc(campo,texto,n.id)}));
 function renderPercHab(focoId){
   const d=get("percebida",{texto:"",imagens:[]});
   if(!Array.isArray(d.habilidades))d.habilidades=[];
@@ -600,7 +630,7 @@ function renderPercHab(focoId){
 }
 $("#perc-hab-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d.habilidades))d.habilidades=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.push(n);save("percebida");renderPercHab(n.id)});
 function renderPercebida(){
-  renderPercHab();
+  renderPercHab();LISTAS_PERC.forEach(([c,t])=>renderListaPerc(c,t));
   const d=get("percebida",{texto:"",imagens:[]});d.imagens=d.imagens||[];
   const t=$("#percebida-texto");t.value=d.texto||"";autoAltura(t);
   const box=$("#perc-mood");
