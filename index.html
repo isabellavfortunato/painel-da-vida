@@ -143,6 +143,12 @@ button{font:inherit;cursor:pointer}
 .foto button{position:absolute;top:4px;right:4px;background:rgba(30,15,22,.72);color:#fff;border:0;border-radius:999px;padding:2px 8px;font-size:11px}
 .subir{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .subir small{color:var(--muted)}
+.tres-listas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;width:100%}
+@media (max-width:760px){.tres-listas{grid-template-columns:minmax(0,1fr)}}
+.mini-lista{display:flex;flex-direction:column;gap:10px;align-items:flex-start;min-width:0}
+.mini-lista h4{margin:0;font-family:var(--display);font-weight:600;font-size:20px;color:var(--fg)}
+.hab-lista.simples{grid-template-columns:minmax(0,1fr)}
+.hab-lista.simples .hab{grid-template-columns:1fr auto}
 .habilidades{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .sub-secao{font-family:var(--display);font-weight:600;font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0;color:var(--accent);letter-spacing:.01em}
 .hab-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;width:100%;border-top:1px solid var(--line)}
@@ -317,6 +323,14 @@ button{font:inherit;cursor:pointer}
       <h3 class="sub-secao">Posicionamentos</h3>
       <div class="hab-lista" id="perc-posicionamentos-lista"></div>
       <button class="btn sec" id="perc-posicionamentos-nova">Adicionar posicionamento</button>
+    </div>
+    <div class="habilidades">
+      <h3 class="sub-secao">O que eu gosto, o que não gosto e o que jamais faria</h3>
+      <div class="tres-listas">
+        <div class="mini-lista"><h4>O que eu gosto</h4><div class="hab-lista simples" id="perc-gosto-lista"></div><button class="btn sec" id="perc-gosto-nova">Adicionar</button></div>
+        <div class="mini-lista"><h4>O que não gosto</h4><div class="hab-lista simples" id="perc-naoGosto-lista"></div><button class="btn sec" id="perc-naoGosto-nova">Adicionar</button></div>
+        <div class="mini-lista"><h4>O que jamais faria</h4><div class="hab-lista simples" id="perc-jamais-lista"></div><button class="btn sec" id="perc-jamais-nova">Adicionar</button></div>
+      </div>
     </div>
     <div class="subir">
       <label class="btn" for="percebida-arquivo" tabindex="0">Adicionar imagens</label>
@@ -591,26 +605,26 @@ $("#pessoa-arquivo").addEventListener("change",async e=>{
 });
 $(".subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#pessoa-arquivo").click()}});
 /* ---------- como eu quero ser percebida (mesma estrutura de A pessoa que eu quero ser) ---------- */
-function renderListaPerc(campo,texto,focoId){
+function renderListaPerc(campo,texto,focoId,simples,minimo){
   const d=get("percebida",{texto:"",imagens:[]});
   if(!Array.isArray(d[campo]))d[campo]=[];
   const lista=d[campo];
-  while(lista.length<6)lista.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:"",f:false});
+  while(lista.length<(minimo||6))lista.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:"",f:false});
   const box=$("#perc-"+campo+"-lista");box.innerHTML="";
   lista.forEach((h,i)=>{
     const row=document.createElement("div");row.className="hab"+(h.f?" feito":"");
-    row.innerHTML=`<input type="checkbox" aria-label="Marcar como conquistado"><input type="text" id="perc-${campo}-${h.id}" placeholder="${texto}"><button aria-label="Remover">remover</button>`;
-    const [cb,tx,rm]=row.children;cb.checked=!!h.f;tx.value=h.t||"";
-    cb.addEventListener("change",()=>{h.f=cb.checked;row.classList.toggle("feito",h.f);save("percebida")});
+    row.innerHTML=(simples?"":`<input type="checkbox" aria-label="Marcar como conquistado">`)+`<input type="text" id="perc-${campo}-${h.id}" placeholder="${texto}"><button aria-label="Remover">remover</button>`;
+    const [cb,tx,rm]=simples?[null,...row.children]:row.children;tx.value=h.t||"";if(cb)cb.checked=!!h.f;
+    if(cb)cb.addEventListener("change",()=>{h.f=cb.checked;row.classList.toggle("feito",h.f);save("percebida")});
     tx.addEventListener("input",()=>{h.t=tx.value;save("percebida")});
-    tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};lista.splice(i+1,0,n);save("percebida");renderListaPerc(campo,texto,n.id)}});
-    rm.addEventListener("click",()=>{lista.splice(i,1);save("percebida");renderListaPerc(campo,texto)});
+    tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};lista.splice(i+1,0,n);save("percebida");renderListaPerc(campo,texto,n.id,simples,minimo)}});
+    rm.addEventListener("click",()=>{lista.splice(i,1);save("percebida");renderListaPerc(campo,texto,null,simples,minimo)});
     box.appendChild(row);
   });
   if(focoId){const el=document.getElementById("perc-"+campo+"-"+focoId);if(el)el.focus()}
 }
-const LISTAS_PERC=[["valores","Escreva um valor"],["posicionamentos","Escreva um posicionamento"]];
-LISTAS_PERC.forEach(([campo,texto])=>$("#perc-"+campo+"-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d[campo]))d[campo]=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d[campo].push(n);save("percebida");renderListaPerc(campo,texto,n.id)}));
+const LISTAS_PERC=[["valores","Escreva um valor"],["posicionamentos","Escreva um posicionamento"],["gosto","Escreva algo de que você gosta",true,4],["naoGosto","Escreva algo de que você não gosta",true,4],["jamais","Escreva algo que você jamais faria",true,4]];
+LISTAS_PERC.forEach(([campo,texto,simples,minimo])=>$("#perc-"+campo+"-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d[campo]))d[campo]=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d[campo].push(n);save("percebida");renderListaPerc(campo,texto,n.id,simples,minimo)}));
 function renderPercHab(focoId){
   const d=get("percebida",{texto:"",imagens:[]});
   if(!Array.isArray(d.habilidades))d.habilidades=[];
@@ -630,7 +644,7 @@ function renderPercHab(focoId){
 }
 $("#perc-hab-nova").addEventListener("click",()=>{const d=get("percebida",{texto:"",imagens:[]});if(!Array.isArray(d.habilidades))d.habilidades=[];const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.push(n);save("percebida");renderPercHab(n.id)});
 function renderPercebida(){
-  renderPercHab();LISTAS_PERC.forEach(([c,t])=>renderListaPerc(c,t));
+  renderPercHab();LISTAS_PERC.forEach(([c,t,si,mi])=>renderListaPerc(c,t,null,si,mi));
   const d=get("percebida",{texto:"",imagens:[]});d.imagens=d.imagens||[];
   const t=$("#percebida-texto");t.value=d.texto||"";autoAltura(t);
   const box=$("#perc-mood");
