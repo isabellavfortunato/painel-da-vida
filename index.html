@@ -110,7 +110,7 @@ button{font:inherit;cursor:pointer}
 .imp-acoes span.alerta{color:var(--accent);font-weight:600}
 .importado{color:var(--accent);font-weight:600;font-size:14px}
 .lista{display:grid;grid-template-columns:minmax(0,1fr);max-height:520px;overflow-y:auto;padding-right:6px;border-top:1px solid var(--line)}
-.item{display:grid;grid-template-columns:34px 22px 1fr;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
+.item{display:grid;grid-template-columns:34px 22px 1fr auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
 .item .n{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);text-align:right}
 .item input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;margin:0}
 .item input[type=text]{border:0;border-radius:6px;padding:6px 6px}
@@ -149,11 +149,26 @@ button{font:inherit;cursor:pointer}
 .mini-lista h4{margin:0;font-family:var(--display);font-weight:600;font-size:20px;color:var(--fg)}
 .hab-lista.simples{grid-template-columns:minmax(0,1fr)}
 .hab-lista.simples .hab{grid-template-columns:1fr auto}
+.com-sub{min-width:0}
+.sub-bt{background:transparent;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;padding:3px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sub-bt:hover,.sub-bt[aria-expanded="true"]{border-color:var(--accent-mid);color:var(--accent)}
+.sub-bt.cheio{color:var(--accent);border-color:var(--accent-mid);font-weight:600}
+.hab .sub-bt,.item .sub-bt{opacity:0;transition:opacity .15s;border:1px solid var(--line);padding:3px 10px;font-size:12px;color:var(--muted)}
+.hab .sub-bt.cheio,.item .sub-bt.cheio{color:var(--accent);border-color:var(--accent-mid)}
+.hab .sub-bt.cheio,.item .sub-bt.cheio,.hab:hover .sub-bt,.item:hover .sub-bt,.hab:focus-within .sub-bt,.item:focus-within .sub-bt,.sub-bt[aria-expanded="true"]{opacity:1}
+@media (hover:none){.hab .sub-bt,.item .sub-bt{opacity:1}}
+.sub-painel{margin:2px 0 8px 30px;padding-left:12px;border-left:2px solid var(--accent-soft);display:flex;flex-direction:column;gap:2px}
+.sub{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center}
+.sub input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.sub input[type=text]{border:0;border-radius:6px;padding:5px 6px;font-size:15px;min-width:0;background:transparent}
+.sub.feito input[type=text]{text-decoration:line-through;color:var(--muted)}
+.sub button{background:transparent;border:0;color:var(--muted);font-size:12px;padding:4px 6px}
+.sub-add{align-self:flex-start;background:transparent;border:0;color:var(--accent);font-weight:600;font-size:13px;padding:4px 0}
 .habilidades{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .sub-secao{font-family:var(--display);font-weight:600;font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0;color:var(--accent);letter-spacing:.01em}
 .hab-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;width:100%;border-top:1px solid var(--line)}
 @media (max-width:640px){.hab-lista{grid-template-columns:minmax(0,1fr)}}
-.hab{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
+.hab{display:grid;grid-template-columns:22px 1fr auto auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0;min-width:0}
 .hab input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;margin:0}
 .hab input[type=text]{border:0;border-radius:6px;padding:7px 6px;min-width:0}
 .hab.feito input[type=text]{text-decoration:line-through;color:var(--muted)}
@@ -446,6 +461,40 @@ function cardsCem(){
   }
   $("#cem-cards").innerHTML=`<div class="card"><b>${escritos}</b><span>itens escritos</span></div><div class="card"><b>${feitos}</b><span>itens concluídos</span></div><div class="card"><b>${101-feitos}</b><span>itens a concluir</span></div><div class="card"><b>${diaTxt}</b><span>${diaLbl}</span></div>`;
 }
+
+/* ---------- subtarefas para os itens de marcar ---------- */
+const subAbertos=new WeakSet();
+function comSubtarefas(row,it,docId){
+  const wrap=document.createElement("div");wrap.className="com-sub";
+  const bt=document.createElement("button");bt.type="button";bt.className="sub-bt";
+  const painel=document.createElement("div");painel.className="sub-painel";
+  const contar=()=>{const s=(it.sub||[]).filter(x=>(x.t||"").trim());bt.textContent=s.length?(s.filter(x=>x.f).length+"/"+s.length):"+ subtarefas";bt.classList.toggle("cheio",!!s.length);bt.setAttribute("aria-expanded",subAbertos.has(it)?"true":"false");bt.title=s.length?"Subtarefas concluídas":"Adicionar subtarefas"};
+  const desenhar=foco=>{
+    painel.hidden=!subAbertos.has(it);painel.innerHTML="";if(painel.hidden)return;
+    if(!Array.isArray(it.sub))it.sub=[];
+    it.sub.forEach((x,i)=>{
+      const r=document.createElement("div");r.className="sub"+(x.f?" feito":"");
+      r.innerHTML=`<input type="checkbox" aria-label="Subtarefa concluída"><input type="text" placeholder="Escreva uma subtarefa"><button type="button" aria-label="Remover subtarefa">remover</button>`;
+      const [c,t,rm]=r.children;c.checked=!!x.f;t.value=x.t||"";
+      c.addEventListener("change",()=>{x.f=c.checked;r.classList.toggle("feito",x.f);save(docId);contar()});
+      t.addEventListener("input",()=>{x.t=t.value;save(docId);contar()});
+      t.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();it.sub.splice(i+1,0,{t:"",f:false});save(docId);desenhar(i+1)}});
+      rm.addEventListener("click",()=>{it.sub.splice(i,1);save(docId);desenhar();contar()});
+      painel.appendChild(r);if(foco===i)t.focus();
+    });
+    const add=document.createElement("button");add.type="button";add.className="sub-add";add.textContent="Adicionar subtarefa";
+    add.addEventListener("click",()=>{it.sub.push({t:"",f:false});desenhar(it.sub.length-1)});
+    painel.appendChild(add);
+  };
+  bt.addEventListener("click",()=>{
+    if(subAbertos.has(it))subAbertos.delete(it);
+    else{subAbertos.add(it);if(!Array.isArray(it.sub)||!it.sub.length){it.sub=[{t:"",f:false}];desenhar(0);contar();return}}
+    desenhar();contar();
+  });
+  const rm=row.querySelector(":scope > button");if(rm)row.insertBefore(bt,rm);else row.appendChild(bt);
+  wrap.appendChild(row);wrap.appendChild(painel);contar();desenhar();
+  return wrap;
+}
 function renderCem(){
   const d=lista();$("#cem-inicio").value=d.inicio||"";
   const box=$("#cem-lista");box.innerHTML="";
@@ -455,7 +504,7 @@ function renderCem(){
     const cb=row.children[1],tx=row.children[2];cb.checked=!!it.f;tx.value=it.t;
     cb.addEventListener("change",()=>{it.f=cb.checked;row.classList.toggle("feito",it.f);save("lista");cardsCem()});
     tx.addEventListener("input",()=>{it.t=tx.value;save("lista");cardsCem()});
-    box.appendChild(row);
+    box.appendChild(comSubtarefas(row,it,"lista"));
   });
   cardsCem();
 }
@@ -533,7 +582,7 @@ function renderHab(focoId){
     tx.addEventListener("input",()=>{h.t=tx.value;save("pessoa")});
     tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.splice(i+1,0,n);save("pessoa");renderHab(n.id)}});
     rm.addEventListener("click",()=>{d.habilidades.splice(i,1);save("pessoa");renderHab()});
-    box.appendChild(row);
+    box.appendChild(comSubtarefas(row,h,"pessoa"));
   });
   if(focoId){const el=document.getElementById("hab-"+focoId);if(el)el.focus()}
 }
@@ -619,7 +668,7 @@ function renderListaPerc(campo,texto,focoId,simples,minimo){
     tx.addEventListener("input",()=>{h.t=tx.value;save("percebida")});
     tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};lista.splice(i+1,0,n);save("percebida");renderListaPerc(campo,texto,n.id,simples,minimo)}});
     rm.addEventListener("click",()=>{lista.splice(i,1);save("percebida");renderListaPerc(campo,texto,null,simples,minimo)});
-    box.appendChild(row);
+    box.appendChild(simples?row:comSubtarefas(row,h,"percebida"));
   });
   if(focoId){const el=document.getElementById("perc-"+campo+"-"+focoId);if(el)el.focus()}
 }
@@ -638,7 +687,7 @@ function renderPercHab(focoId){
     tx.addEventListener("input",()=>{h.t=tx.value;save("percebida")});
     tx.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const n={id:"h"+Date.now().toString(36),t:"",f:false};d.habilidades.splice(i+1,0,n);save("percebida");renderPercHab(n.id)}});
     rm.addEventListener("click",()=>{d.habilidades.splice(i,1);save("percebida");renderPercHab()});
-    box.appendChild(row);
+    box.appendChild(comSubtarefas(row,h,"percebida"));
   });
   if(focoId){const el=document.getElementById("perc-hab-"+focoId);if(el)el.focus()}
 }
