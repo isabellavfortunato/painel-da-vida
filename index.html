@@ -223,6 +223,14 @@ button{font:inherit;cursor:pointer}
 .tempo-box select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);max-width:100%;min-width:0;flex:1}
 .tempo-box .btn{font-size:13px;padding:7px 14px}
 .tempo-box a{color:var(--accent);font-size:13px;font-weight:600}
+.tempo-box .rot{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.tempo-box .barra{height:6px;border-radius:99px;background:var(--surface);overflow:hidden}
+.tempo-box .barra i{display:block;height:100%;background:var(--accent);width:0}
+.tempo-box .tipos{display:flex;gap:6px}
+.tempo-box .tipos button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--accent);background:transparent;color:var(--accent)}
+.tempo-box .tipos button.sel{background:var(--accent);color:var(--accent-ink)}
+.tempo-box input[type=number]{font:inherit;width:64px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.tempo-box .sep{border-top:1px solid var(--line);padding-top:10px}
 .tempo-conexao{font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .tempo-conexao .btn{font-size:13px;padding:7px 14px}
 .tempo-erro{color:var(--accent);font-weight:600}
@@ -783,9 +791,9 @@ function renderDes(){
     const c=document.createElement("article");c.className="desafio";
     if(!desAbertos.has(it.id)){
       c.classList.add("fechado");
-      c.innerHTML=`<div class="des-fechado"><button class="des-cab" aria-expanded="false"><span class="des-nome"></span>${it.tempoId?`<span class="des-relogio" data-relogio="${it.tempoId}"></span>`:""}<span class="des-seta" aria-hidden="true">›</span></button>${it.tempoId?`<button class="des-play" data-play="${it.tempoId}" hidden>Iniciar</button>`:""}</div>`;
+      c.innerHTML=`<div class="des-fechado"><button class="des-cab" aria-expanded="false"><span class="des-nome"></span><span class="des-relogio" data-des-rel="${it.id}"></span><span class="des-seta" aria-hidden="true">›</span></button><button class="des-play" data-des-play="${it.id}">Iniciar</button></div>`;
       const nm=c.querySelector(".des-nome");nm.textContent=(it.titulo||"").trim()||"Desafio sem nome";if(!(it.titulo||"").trim())nm.classList.add("sem-nome");
-      const pl=c.querySelector(".des-play");if(pl)pl.addEventListener("click",async e=>{e.stopPropagation();pl.disabled=true;try{const m=await alternarTempo(it.tempoId);if(m)pl.textContent=m}catch(err){pl.textContent="Não foi possível agora"}pl.disabled=false;atualizarTempos()});
+      const pl=c.querySelector(".des-play");pl.addEventListener("click",async e=>{e.stopPropagation();pl.disabled=true;try{const m=await alternarDes(it.id);if(m)pl.textContent=m}catch(err){pl.textContent="Não foi possível agora"}pl.disabled=false;atualizarTempos()});
       c.querySelector(".des-cab").addEventListener("click",()=>{desAbertos.add(it.id);renderDes();const el=document.getElementById("dx-"+it.id);if(el)el.focus()});
       box.appendChild(c);return;
     }
@@ -835,14 +843,14 @@ const TEMPO_URL="https://tempo-dos-projetos.firebaseapp.com/";
 const appT=initializeApp(tempoConfig,"tempo");
 const authT=getAuth(appT);
 const fdbT=initializeFirestore(appT,{experimentalForceLongPolling:true});
-let uidT=null,emailT="",tProj={},pararT=null,erroT="";
+let uidT=null,emailT="",tProj={},pararT=null,erroT="",tCarregado=false;
 /* relê os projetos direto do servidor, para o relógio não ficar parado quando a conexão em tempo real cai no iPad */
 let relendoT=false;
 async function relerTempo(){
   if(!uidT||relendoT||document.hidden)return;relendoT=true;
   try{
     const snap=await getDocsFromServer(collection(fdbT,"usuarios",uidT,"projetos"));
-    const novo={};snap.docs.forEach(d=>{novo[d.id]=d.data()});
+    const novo={};snap.docs.forEach(d=>{novo[d.id]=d.data()});tCarregado=true;
     if(JSON.stringify(novo)!==JSON.stringify(tProj)){tProj=novo;trazerProjetosNovos();const a=document.activeElement;if(a&&a.closest&&a.closest("#des-lista")&&a.matches("textarea,input,select"))atualizarTempos();else renderDes()}
   }catch(e){}
   relendoT=false;
@@ -859,21 +867,49 @@ function totalT(p){let t=0;for(const x of p.sessoes||[])t+=x.fim-x.inicio;return
 // projeto novo criado pelo Painel: já compartilhado, e o tipo (cronômetro ou timer) é escolhido no Tempo dos projetos
 const corpoNovoT=p=>({nome:p.nome,tipo:"",meta:0,criadoEm:Date.now(),sessoes:[],ativo:null,painel:true,arquivado:false});
 const docT=id=>fsDoc(fdbT,"usuarios",uidT,"projetos",id);
-function atualizarTempos(){
-  document.querySelectorAll("[data-tempo]").forEach(el=>{const p=visivelT(tProj[el.dataset.tempo])?tProj[el.dataset.tempo]:null;el.textContent=p?curto(totalT(p)):"";el.classList.toggle("rodando",!!(p&&p.ativo))});
-  document.querySelectorAll("[data-tempo-rel]").forEach(el=>{const p=tProj[el.dataset.tempoRel];if(p)el.textContent=relogio(totalT(p))});
-  document.querySelectorAll("[data-relogio]").forEach(el=>{const p=visivelT(tProj[el.dataset.relogio])?tProj[el.dataset.relogio]:null;el.textContent=p?relogio(totalT(p)):(uidT?"":"conecte o Tempo");el.classList.toggle("rodando",!!(p&&p.ativo));el.classList.toggle("sem",!p)});
-  document.querySelectorAll("[data-play]").forEach(el=>{const p=visivelT(tProj[el.dataset.play])?tProj[el.dataset.play]:null;el.hidden=!p;if(p&&!el.disabled&&(el.textContent==="Iniciar"||el.textContent==="Pausar"))el.textContent=p.ativo?"Pausar":"Iniciar";el.classList.toggle("on",!!(p&&p.ativo))});
+/* cada desafio tem o próprio cronômetro ou timer; quando está ligado a um projeto do Tempo dos projetos, usa o tempo de lá */
+const desPorId=id=>(get("desafios",{itens:[]}).itens||[]).find(x=>x.id===id);
+function fonteDes(it){
+  if(!it)return null;
+  if(it.tempoId&&uidT){if(!tCarregado)return null;const p=tProj[it.tempoId];if(visivelT(p))return{p,tempo:true}}
+  else if(it.tempoId&&!uidT)return null;
+  return{p:it,tempo:false};
 }
-async function alternarTempo(id){
-  const q=Object.assign({},tProj[id]),agora=Date.now();
+const ehTimerD=p=>p.tipo==="timer"&&p.meta>0;
+function mostradoD(p){const t=totalT(p);return ehTimerD(p)?Math.max(0,p.meta-t):t}
+const encerrandoD=new Set();
+function encerrarTimers(){
+  (get("desafios",{itens:[]}).itens||[]).forEach(it=>{
+    const f=fonteDes(it);if(!f||!f.p.ativo||!ehTimerD(f.p))return;
+    let feito=0;for(const x of f.p.sessoes||[])feito+=x.fim-x.inicio;
+    if(feito+Date.now()-f.p.ativo<f.p.meta)return;
+    const fim=f.p.ativo+Math.max(0,f.p.meta-feito),sess=[...(f.p.sessoes||[]),{inicio:f.p.ativo,fim}];
+    if(f.tempo){if(encerrandoD.has(it.tempoId))return;encerrandoD.add(it.tempoId);setDoc(docT(it.tempoId),{sessoes:sess,ativo:null},{merge:true}).catch(()=>{}).finally(()=>encerrandoD.delete(it.tempoId))}
+    else{it.sessoes=sess;it.ativo=null;save("desafios");renderDes()}
+  });
+}
+function atualizarTempos(){
+  encerrarTimers();
+  document.querySelectorAll("[data-tempo]").forEach(el=>{const p=visivelT(tProj[el.dataset.tempo])?tProj[el.dataset.tempo]:null;el.textContent=p?curto(totalT(p)):"";el.classList.toggle("rodando",!!(p&&p.ativo))});
+  document.querySelectorAll("[data-des-rel]").forEach(el=>{const it=desPorId(el.dataset.desRel),f=fonteDes(it);el.textContent=f?relogio(mostradoD(f.p)):(it&&it.tempoId&&!uidT?"conecte o Tempo":"");el.classList.toggle("rodando",!!(f&&f.p.ativo));el.classList.toggle("sem",!f)});
+  document.querySelectorAll("[data-des-play]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desPlay));el.hidden=!f;if(f&&!el.disabled&&(el.textContent==="Iniciar"||el.textContent==="Pausar"))el.textContent=f.p.ativo?"Pausar":"Iniciar";el.classList.toggle("on",!!(f&&f.p.ativo))});
+  document.querySelectorAll("[data-des-big]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desBig));if(f)el.textContent=relogio(mostradoD(f.p))});
+  document.querySelectorAll("[data-des-sessao]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desSessao));if(!f)return;const p=f.p;el.textContent=p.ativo?"Esta sessão: "+relogio(Date.now()-p.ativo):(ehTimerD(p)&&totalT(p)>=p.meta?"Timer concluído":"")});
+  document.querySelectorAll("[data-des-feito]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desFeito));if(!f)return;const p=f.p,t=totalT(p),n=(p.sessoes||[]).length;el.textContent=(ehTimerD(p)?"Já feito "+relogio(Math.min(t,p.meta))+" de "+curto(p.meta):"Já feito "+relogio(t))+" · "+n+(n===1?" parada":" paradas")});
+  document.querySelectorAll("[data-des-barra]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desBarra));if(f&&ehTimerD(f.p))el.style.width=Math.min(100,totalT(f.p)/f.p.meta*100)+"%"});
+  document.querySelectorAll("[data-des-bt]").forEach(el=>{const f=fonteDes(desPorId(el.dataset.desBt));if(f&&!el.disabled&&(el.textContent==="Iniciar"||el.textContent==="Pausar"))el.textContent=f.p.ativo?"Pausar":"Iniciar"});
+}
+async function alternarDes(id){
+  const it=desPorId(id),f=fonteDes(it);if(!f)return "";
+  const q=f.tempo?Object.assign({},f.p):f.p,agora=Date.now();
   if(q.ativo){if(agora-q.ativo>=1000)q.sessoes=[...(q.sessoes||[]),{inicio:q.ativo,fim:agora}];q.ativo=null}
   else{
     let feito=0;for(const x of q.sessoes||[])feito+=x.fim-x.inicio;
-    if(q.tipo==="timer"&&q.meta>0&&feito>=q.meta)return "Timer concluído";
+    if(ehTimerD(q)&&feito>=q.meta)return "Timer concluído";
     q.ativo=agora;
   }
-  await setDoc(docT(id),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
+  if(f.tempo)await setDoc(docT(it.tempoId),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
+  else{it.sessoes=q.sessoes||[];it.ativo=q.ativo||null;save("desafios")}
   return "";
 }
 setInterval(atualizarTempos,1000);
@@ -905,10 +941,10 @@ async function entrarTempo(){
 }
 onAuthStateChanged(authT,u=>{
   if(pararT){pararT();pararT=null}
-  uidT=u?u.uid:null;emailT=u&&u.email||"";tProj={};
+  uidT=u?u.uid:null;emailT=u&&u.email||"";tProj={};tCarregado=false;
   if(u){
     pararT=onSnapshot(collection(fdbT,"usuarios",uidT,"projetos"),snap=>{
-      tProj={};snap.docs.forEach(d=>{tProj[d.id]=d.data()});
+      tProj={};snap.docs.forEach(d=>{tProj[d.id]=d.data()});tCarregado=true;
       trazerProjetosNovos();
       const a=document.activeElement;
       if(a&&a.closest&&a.closest("#des-lista")&&a.matches("textarea,input,select"))atualizarTempos();else renderDes();
@@ -918,37 +954,69 @@ onAuthStateChanged(authT,u=>{
 });
 function caixaTempo(it,d){
   const b=document.createElement("div");b.className="tempo-box";
-  if(!uidT){b.innerHTML=`<span>Conecte o Tempo dos projetos, logo acima dos desafios, para cronometrar este desafio.</span>`;return b}
-  const ligado=it.tempoId&&tProj[it.tempoId];
-  const p=visivelT(ligado)?ligado:null;
-  if(p){
-    b.innerHTML=`<div class="tempo-linha" style="justify-content:space-between"><span class="rel" data-tempo-rel="${it.tempoId}">${relogio(totalT(p))}</span><span class="proj"></span></div>
-    <div class="tempo-linha"><button class="btn" data-acao="alternar">${p.ativo?"Pausar":"Iniciar"}</button><a href="${TEMPO_URL}" target="_blank" rel="noopener">Abrir no Tempo dos projetos</a><button class="btn linha" data-acao="desligar" style="margin-left:auto">Desligar</button></div>`;
-    b.querySelector(".proj").textContent="Projeto: "+p.nome;
-  }else{
-    const ids=Object.keys(tProj).filter(id=>escolhivelT(tProj[id])).sort((x,y)=>(tProj[x].nome||"").localeCompare(tProj[y].nome||""));
-    b.innerHTML=`<span>${it.tempoId?(ligado?"O projeto ligado a este desafio deixou de ser compartilhado com o Painel no Tempo dos projetos. ":"O projeto ligado a este desafio foi excluído no Tempo dos projetos. "):""}Ligue este desafio a um projeto para acompanhar o tempo dedicado a ele.</span>
-    <div class="tempo-linha"><button class="btn" data-acao="criar">Criar projeto com o nome do desafio</button></div>
-    ${ids.length?`<div class="tempo-linha"><select aria-label="Projeto existente"><option value="">Ou escolha um projeto existente</option></select><button class="btn linha" data-acao="ligar">Ligar</button></div>`:""}`;
-    const sel=b.querySelector("select");if(sel)ids.forEach(id=>{const o=document.createElement("option");o.value=id;o.textContent=tProj[id].nome||"Sem nome";sel.appendChild(o)});
+  if(it.tempoId&&!uidT){b.innerHTML=`<span>Este desafio está ligado a um projeto do Tempo dos projetos. Conecte o Tempo dos projetos, logo acima dos desafios, para ver e cronometrar o tempo dele.</span><div class="tempo-linha"><button class="btn linha" data-acao="desligar">Usar o cronômetro do painel</button></div>`}
+  else if(it.tempoId&&!tCarregado){b.innerHTML=`<span>Carregando o tempo do Tempo dos projetos...</span>`}
+  else{
+    const f=fonteDes(it),p=f.p,timer=ehTimerD(p),id=esc(it.id);
+    const relogioHtml=`<div class="tempo-linha" style="justify-content:space-between;align-items:flex-end"><div><div class="rot">${timer?"Tempo restante":"Tempo acumulado"}</div><span class="rel" data-des-big="${id}"></span></div><span class="proj" data-des-sessao="${id}"></span></div>
+      ${timer?`<div class="barra"><i data-des-barra="${id}"></i></div>`:""}
+      <div class="tempo-linha"><button class="btn" data-acao="alternar" data-des-bt="${id}">Iniciar</button><span class="proj" data-des-feito="${id}"></span></div>`;
+    if(f.tempo){
+      b.innerHTML=relogioHtml+`<div class="tempo-linha sep"><span class="proj nome-proj"></span><a href="${TEMPO_URL}" target="_blank" rel="noopener">Abrir no Tempo dos projetos</a><button class="btn linha" data-acao="desligar" style="margin-left:auto">Desligar</button></div>`;
+      b.querySelector(".nome-proj").textContent="Ligado ao projeto "+(p.nome||"sem nome")+" do Tempo dos projetos"+(timer?" (timer)":" (cronômetro)")+".";
+    }else{
+      const ms=p.meta||0,h=Math.floor(ms/3600000),m=Math.round(ms%3600000/60000);
+      let extra="";
+      if(uidT){
+        const ids=Object.keys(tProj).filter(x=>escolhivelT(tProj[x])).sort((x,y)=>(tProj[x].nome||"").localeCompare(tProj[y].nome||""));
+        extra=`<div class="sep" style="display:flex;flex-direction:column;gap:8px"><span class="proj">${it.tempoId?"O projeto que estava ligado a este desafio não está mais compartilhado com o Painel. ":""}Se quiser, ligue este desafio a um projeto do Tempo dos projetos.</span>
+        <div class="tempo-linha"><button class="btn linha" data-acao="criar">Criar projeto com o nome do desafio</button></div>
+        ${ids.length?`<div class="tempo-linha"><select aria-label="Projeto existente"><option value="">Ou escolha um projeto existente</option></select><button class="btn linha" data-acao="ligar">Ligar</button></div>`:""}</div>`;
+        b.dataset.ids=ids.join(",");
+      }
+      b.innerHTML=relogioHtml+`<div class="tempo-linha sep"><div class="tipos"><button data-acao="cronometro" class="${timer?"":"sel"}">Cronômetro</button><button data-acao="timer" class="${timer?"sel":""}">Timer</button></div>
+        ${timer?`<span class="tempo-linha" style="gap:4px"><input type="number" min="0" max="999" inputmode="numeric" data-meta="h" value="${h}" aria-label="Horas"> h <input type="number" min="0" max="59" inputmode="numeric" data-meta="m" value="${m}" aria-label="Minutos"> min</span>`:""}
+        <button class="btn linha" data-acao="zerar" style="margin-left:auto">Zerar</button></div>`+extra;
+      const sel=b.querySelector("select");if(sel)b.dataset.ids.split(",").forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=tProj[x].nome||"Sem nome";sel.appendChild(o)});
+      b.querySelectorAll("[data-meta]").forEach(inp=>inp.addEventListener("change",()=>{
+        const hh=Math.max(0,parseInt(b.querySelector('[data-meta="h"]').value)||0),mm=Math.min(59,Math.max(0,parseInt(b.querySelector('[data-meta="m"]').value)||0));
+        const nova=(hh*60+mm)*60000;if(!nova){renderDes();return}
+        it.meta=nova;save("desafios");renderDes();
+      }));
+    }
   }
   b.addEventListener("click",async e=>{
     const ac=e.target.closest("[data-acao]");if(!ac)return;
     const acao=ac.dataset.acao;
     try{
       if(acao==="alternar"){
-        const m=await alternarTempo(it.tempoId);if(m){ac.textContent=m;return}
+        ac.disabled=true;const m=await alternarDes(it.id);ac.disabled=false;if(m){ac.textContent=m;return}atualizarTempos();
+      }else if(acao==="cronometro"){
+        it.tipo="cronometro";save("desafios");renderDes();
+      }else if(acao==="timer"){
+        it.tipo="timer";if(!(it.meta>0))it.meta=30*60000;save("desafios");renderDes();
+      }else if(acao==="zerar"){
+        const linha=ac.parentElement;linha.innerHTML=`<span>Zerar o tempo deste desafio?</span><button class="btn" data-acao="zerar-sim">Sim, zerar</button><button class="btn linha" data-acao="zerar-nao">Cancelar</button>`;
+      }else if(acao==="zerar-sim"){
+        it.sessoes=[];it.ativo=null;save("desafios");renderDes();
+      }else if(acao==="zerar-nao"){
+        renderDes();
       }else if(acao==="criar"){
         const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        const corpo=corpoNovoT({nome:(it.titulo||"").trim()||"Desafio"});
+        if(it.tipo==="timer"&&it.meta>0){corpo.tipo="timer";corpo.meta=it.meta}else if(it.tipo==="cronometro")corpo.tipo="cronometro";
+        corpo.sessoes=it.sessoes||[];corpo.ativo=it.ativo||null;
         it.tempoId=id;save("desafios");
-        try{await setDoc(docT(id),corpoNovoT({nome:(it.titulo||"").trim()||"Desafio"}))}catch(e){delete it.tempoId;save("desafios");throw e}
+        try{await setDoc(docT(id),corpo)}catch(e){delete it.tempoId;save("desafios");throw e}
         renderDes();
       }else if(acao==="ligar"){
         const v=b.querySelector("select").value;if(!v)return;it.tempoId=v;save("desafios");renderDes();
       }else if(acao==="desligar"){
+        const f=fonteDes(it);
+        if(f&&f.tempo){const q=f.p;it.tipo=q.tipo==="timer"&&q.meta>0?"timer":"cronometro";it.meta=q.meta||0;it.sessoes=[...(q.sessoes||[])];it.ativo=null;if(q.ativo)it.sessoes.push({inicio:q.ativo,fim:Date.now()});}
         {const dd=get("desafios",{itens:[]});dd.ignorados=dd.ignorados||[];if(!dd.ignorados.includes(it.tempoId))dd.ignorados.push(it.tempoId)}delete it.tempoId;save("desafios");renderDes();
       }
-    }catch(err){ac.textContent="Não foi possível agora";setTimeout(renderDes,2500)}
+    }catch(err){ac.disabled=false;ac.textContent="Não foi possível agora";setTimeout(renderDes,2500)}
   });
   return b;
 }
