@@ -834,8 +834,22 @@ function renderTudo(){renderVida();renderCem();renderAreas();renderPessoa();rend
 const TEMPO_URL="https://tempo-dos-projetos.firebaseapp.com/";
 const appT=initializeApp(tempoConfig,"tempo");
 const authT=getAuth(appT);
-const fdbT=getFirestore(appT);
-let uidT=null,tProj={},pararT=null,erroT="";
+const fdbT=initializeFirestore(appT,{experimentalForceLongPolling:true});
+let uidT=null,emailT="",tProj={},pararT=null,erroT="";
+/* relê os projetos direto do servidor, para o relógio não ficar parado quando a conexão em tempo real cai no iPad */
+let relendoT=false;
+async function relerTempo(){
+  if(!uidT||relendoT||document.hidden)return;relendoT=true;
+  try{
+    const snap=await getDocsFromServer(collection(fdbT,"usuarios",uidT,"projetos"));
+    const novo={};snap.docs.forEach(d=>{novo[d.id]=d.data()});
+    if(JSON.stringify(novo)!==JSON.stringify(tProj)){tProj=novo;trazerProjetosNovos();const a=document.activeElement;if(a&&a.closest&&a.closest("#des-lista")&&a.matches("textarea,input,select"))atualizarTempos();else renderDes()}
+  }catch(e){}
+  relendoT=false;
+}
+setInterval(relerTempo,15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)relerTempo()});
+window.addEventListener("focus",relerTempo);
 const pad2=n=>String(n).padStart(2,"0");
 function relogio(ms){const s=Math.max(0,Math.floor(ms/1000));return pad2(Math.floor(s/3600))+":"+pad2(Math.floor(s%3600/60))+":"+pad2(s%60)}
 function curto(ms){if(ms<60000)return ms<1000?"0 min":Math.round(ms/1000)+" s";const m=Math.round(ms/60000);if(m<60)return m+" min";const h=Math.floor(m/60),r=m%60;return h+" h"+(r?" "+r+" min":"")}
@@ -876,7 +890,7 @@ function trazerProjetosNovos(){
 }
 function renderConexao(){
   const box=$("#tempo-conexao");if(!box)return;
-  if(uidT){box.innerHTML=`<span>Ligado ao Tempo dos projetos.</span><button class="btn linha" id="tempo-sair">Desconectar</button>`;$("#tempo-sair").onclick=()=>signOut(authT);return}
+  if(uidT){box.innerHTML=`<span>Ligado ao Tempo dos projetos${emailT?" com a conta "+esc(emailT):""}.</span><button class="btn linha" id="tempo-sair">Desconectar</button>`;$("#tempo-sair").onclick=()=>signOut(authT);return}
   box.innerHTML=`<button class="btn sec" id="tempo-entrar">Conectar ao Tempo dos projetos</button><span>para ver e cronometrar o tempo de cada desafio.</span>${erroT?`<span class="tempo-erro">${esc(erroT)}</span>`:""}`;
   $("#tempo-entrar").onclick=entrarTempo;
 }
@@ -891,7 +905,7 @@ async function entrarTempo(){
 }
 onAuthStateChanged(authT,u=>{
   if(pararT){pararT();pararT=null}
-  uidT=u?u.uid:null;tProj={};
+  uidT=u?u.uid:null;emailT=u&&u.email||"";tProj={};
   if(u){
     pararT=onSnapshot(collection(fdbT,"usuarios",uidT,"projetos"),snap=>{
       tProj={};snap.docs.forEach(d=>{tProj[d.id]=d.data()});
