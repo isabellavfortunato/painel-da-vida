@@ -1,5 +1,5 @@
 // Guarda os arquivos do painel para que ele abra mesmo sem internet.
-const VERSAO = "painel-v4";
+const VERSAO = "painel-v5";
 const BASE = ["./", "index.html", "fonts/quentin.ttf", "firebase-config.js", "manifest.webmanifest", "icons/icone-192.png", "icons/icone-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

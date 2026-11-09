@@ -407,7 +407,7 @@ button{font:inherit;cursor:pointer}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, getFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, doc as fsDoc, collection, getDocs, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, getFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, doc as fsDoc, collection, getDocs, getDocsFromServer, getDocsFromCache, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig, tempoConfig } from "./firebase-config.js";
 
 const app=initializeApp(firebaseConfig);
@@ -977,6 +977,8 @@ async function importarBackup(file){
   }catch(e){status("Não foi possível importar o backup. Tente de novo com a internet ligada.")}
 }
 
+window.addEventListener("error",e=>{try{status("Erro no painel: "+(e.message||"desconhecido")+". Recarregue a página.")}catch(_){}});
+window.addEventListener("unhandledrejection",e=>{try{const m=(e.reason&&(e.reason.message||e.reason.code))||"";if(m&&!carregado)status("Erro ao carregar: "+m+". Recarregue a página.")}catch(_){}});
 /* ---------- versões salvas (cópia automática diária) ---------- */
 const MANTER=60;
 const idHoje=()=>{const h=new Date();return h.getFullYear()+"-"+pad(h.getMonth()+1)+"-"+pad(h.getDate())};
@@ -1051,7 +1053,18 @@ onAuthStateChanged(auth,async u=>{
   uid=u.uid;$("#login").hidden=true;$("#app").hidden=false;$("#exportar").hidden=false;
   col={
     doc:id=>({set:d=>setDoc(fsDoc(fdb,"usuarios",uid,"painel",id),d)}),
-    get:async()=>{const s=await getDocs(collection(fdb,"usuarios",uid,"painel"));return{empty:s.empty,docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}}
+    get:async()=>{
+      const ref=collection(fdb,"usuarios",uid,"painel");
+      const limite=(pr,ms)=>Promise.race([pr,new Promise((_,no)=>setTimeout(()=>no(new Error("demorou")),ms))]);
+      let s;
+      try{s=await limite(getDocs(ref),8000)}
+      catch(e){
+        status("O carregamento está demorando. Buscando os dados direto do servidor.");
+        try{s=await limite(getDocsFromServer(ref),12000)}
+        catch(e2){s=await limite(getDocsFromCache(ref),5000)}
+      }
+      return{empty:s.empty,docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))};
+    }
   };
   status("Carregando");
   try{
@@ -1059,7 +1072,10 @@ onAuthStateChanged(auth,async u=>{
     for(let t=0;t<4&&!snap;t++){try{snap=await col.get()}catch(e){status("Não consegui carregar os seus dados. Tentando de novo.");await new Promise(r=>setTimeout(r,2500))}}
     if(!snap){status("Não consegui carregar os seus dados. Recarregue a página quando a internet estiver boa; nada foi alterado.");return}
     snap.docs.forEach(d=>{cache[d.id]=JSON.parse(JSON.stringify(d.data()||{}))});
-    carregado=true;trazerProjetosNovos();renderTudo();status("Tudo salvo");
+    carregado=true;
+    try{trazerProjetosNovos()}catch(e){console.error(e)}
+    try{renderTudo()}catch(e){status("Erro ao montar o painel: "+(e&&e.message||e)+". Recarregue a página.");console.error(e);return}
+    status("Tudo salvo");
     backupDoDia().catch(()=>{});
   }catch(e){status("Não consegui carregar os seus dados. Recarregue a página; nada foi alterado.")}
 });
