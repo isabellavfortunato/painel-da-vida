@@ -788,7 +788,7 @@ function renderDes(){
     ac.querySelector(".fechar").addEventListener("click",()=>{desAbertos.delete(it.id);renderDes()});
     ac.querySelector(".rm").addEventListener("click",()=>{
       ac.innerHTML=`<span>Excluir este desafio?</span><button class="sim">Sim, excluir</button><button class="nao">Cancelar</button>`;
-      ac.querySelector(".sim").onclick=()=>{d.itens.splice(i,1);save("desafios");renderDes()};
+      ac.querySelector(".sim").onclick=()=>{if(it.tempoId){d.ignorados=d.ignorados||[];if(!d.ignorados.includes(it.tempoId))d.ignorados.push(it.tempoId)}d.itens.splice(i,1);save("desafios");renderDes()};
       ac.querySelector(".nao").onclick=renderDes;
     });
     box.appendChild(c);ajTi();autoAltura(tx);
@@ -840,6 +840,17 @@ function atualizarTempos(){
   document.querySelectorAll("[data-tempo-rel]").forEach(el=>{const p=tProj[el.dataset.tempoRel];if(p)el.textContent=relogio(totalT(p))});
 }
 setInterval(atualizarTempos,1000);
+/* projetos novos do Tempo dos projetos viram desafios sozinhos */
+function trazerProjetosNovos(){
+  if(!carregado||!uidT)return;
+  const d=get("desafios",{itens:[]});d.itens=d.itens||[];d.ignorados=d.ignorados||[];
+  const ligados=new Set(d.itens.map(x=>x.tempoId).filter(Boolean));
+  const novos=Object.keys(tProj).filter(id=>escolhivelT(tProj[id])&&!ligados.has(id)&&!d.ignorados.includes(id))
+    .sort((a,b)=>(Number(tProj[a].criadoEm)||0)-(Number(tProj[b].criadoEm)||0));
+  if(!novos.length)return;
+  novos.forEach(id=>d.itens.unshift({id:"t-"+id,titulo:tProj[id].nome||"Projeto",texto:"",tempoId:id}));
+  save("desafios");
+}
 function renderConexao(){
   const box=$("#tempo-conexao");if(!box)return;
   if(uidT){box.innerHTML=`<span>Ligado ao Tempo dos projetos.</span><button class="btn linha" id="tempo-sair">Desconectar</button>`;$("#tempo-sair").onclick=()=>signOut(authT);return}
@@ -861,6 +872,7 @@ onAuthStateChanged(authT,u=>{
   if(u){
     pararT=onSnapshot(collection(fdbT,"usuarios",uidT,"projetos"),snap=>{
       tProj={};snap.docs.forEach(d=>{tProj[d.id]=d.data()});
+      trazerProjetosNovos();
       const a=document.activeElement;
       if(a&&a.closest&&a.closest("#des-lista")&&a.matches("textarea,input,select"))atualizarTempos();else renderDes();
     },()=>{erroT="Não foi possível ler os projetos do Tempo dos projetos.";renderConexao()});
@@ -898,12 +910,13 @@ function caixaTempo(it,d){
         await setDoc(docT(it.tempoId),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
       }else if(acao==="criar"){
         const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-        await setDoc(docT(id),corpoNovoT({nome:(it.titulo||"").trim()||"Desafio"}));
-        it.tempoId=id;save("desafios");renderDes();
+        it.tempoId=id;save("desafios");
+        try{await setDoc(docT(id),corpoNovoT({nome:(it.titulo||"").trim()||"Desafio"}))}catch(e){delete it.tempoId;save("desafios");throw e}
+        renderDes();
       }else if(acao==="ligar"){
         const v=b.querySelector("select").value;if(!v)return;it.tempoId=v;save("desafios");renderDes();
       }else if(acao==="desligar"){
-        delete it.tempoId;save("desafios");renderDes();
+        {const dd=get("desafios",{itens:[]});dd.ignorados=dd.ignorados||[];if(!dd.ignorados.includes(it.tempoId))dd.ignorados.push(it.tempoId)}delete it.tempoId;save("desafios");renderDes();
       }
     }catch(err){ac.textContent="Não foi possível agora";setTimeout(renderDes,2500)}
   });
@@ -1030,7 +1043,7 @@ onAuthStateChanged(auth,async u=>{
     for(let t=0;t<4&&!snap;t++){try{snap=await col.get()}catch(e){status("Não consegui carregar os seus dados. Tentando de novo.");await new Promise(r=>setTimeout(r,2500))}}
     if(!snap){status("Não consegui carregar os seus dados. Recarregue a página quando a internet estiver boa; nada foi alterado.");return}
     snap.docs.forEach(d=>{cache[d.id]=JSON.parse(JSON.stringify(d.data()||{}))});
-    carregado=true;renderTudo();status("Tudo salvo");
+    carregado=true;trazerProjetosNovos();renderTudo();status("Tudo salvo");
     backupDoDia().catch(()=>{});
   }catch(e){status("Não consegui carregar os seus dados. Recarregue a página; nada foi alterado.")}
 });
