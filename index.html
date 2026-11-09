@@ -204,6 +204,14 @@ button{font:inherit;cursor:pointer}
 .des-cab{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:transparent;border:0;padding:18px 20px;text-align:left;color:var(--fg);border-radius:0 0 12px 12px}
 .des-cab:hover .des-seta{transform:translateX(3px)}
 .des-nome{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;letter-spacing:.01em;min-width:0;flex:1}
+.des-fechado{display:flex;align-items:center;gap:8px;padding-right:14px}
+.des-fechado .des-cab{flex:1;min-width:0}
+.des-relogio{font-family:var(--display);font-size:22px;font-weight:500;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.des-relogio.sem{font-family:var(--body);font-size:12px;color:var(--muted)}
+.des-relogio.rodando::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:4px;animation:pulsa 1.4s ease-in-out infinite}
+.des-play{flex:none;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px}
+.des-play.on{background:var(--accent-soft);color:var(--fg)}
+@media (prefers-reduced-motion:reduce){.des-relogio.rodando::before{animation:none}}
 .des-tempo{font-size:14px;color:var(--accent);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
 .des-tempo.rodando::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:1px;animation:pulsa 1.4s ease-in-out infinite}
 @keyframes pulsa{50%{opacity:.25}}
@@ -768,15 +776,17 @@ $("#mes-prox").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.
 /* ---------- 6. desafios ---------- */
 const desAbertos=new Set();
 function renderDes(){
+  setTimeout(atualizarTempos);
   const d=get("desafios",{itens:[]}),box=$("#des-lista");box.innerHTML="";
   if(!d.itens.length){box.innerHTML=`<div class="vazio-des">Nenhum desafio ainda. Clique em Novo desafio para criar o primeiro card.</div>`;return}
   d.itens.forEach((it,i)=>{
     const c=document.createElement("article");c.className="desafio";
     if(!desAbertos.has(it.id)){
       c.classList.add("fechado");
-      c.innerHTML=`<button class="des-cab" aria-expanded="false"><span class="des-nome"></span><span class="des-tempo" data-tempo="${it.tempoId||""}"></span><span class="des-seta" aria-hidden="true">›</span></button>`;
+      c.innerHTML=`<div class="des-fechado"><button class="des-cab" aria-expanded="false"><span class="des-nome"></span>${it.tempoId?`<span class="des-relogio" data-relogio="${it.tempoId}"></span>`:""}<span class="des-seta" aria-hidden="true">›</span></button>${it.tempoId?`<button class="des-play" data-play="${it.tempoId}" hidden>Iniciar</button>`:""}</div>`;
       const nm=c.querySelector(".des-nome");nm.textContent=(it.titulo||"").trim()||"Desafio sem nome";if(!(it.titulo||"").trim())nm.classList.add("sem-nome");
-      c.firstChild.addEventListener("click",()=>{desAbertos.add(it.id);renderDes();const el=document.getElementById("dx-"+it.id);if(el)el.focus()});
+      const pl=c.querySelector(".des-play");if(pl)pl.addEventListener("click",async e=>{e.stopPropagation();pl.disabled=true;try{const m=await alternarTempo(it.tempoId);if(m)pl.textContent=m}catch(err){pl.textContent="Não foi possível agora"}pl.disabled=false;atualizarTempos()});
+      c.querySelector(".des-cab").addEventListener("click",()=>{desAbertos.add(it.id);renderDes();const el=document.getElementById("dx-"+it.id);if(el)el.focus()});
       box.appendChild(c);return;
     }
     c.innerHTML=`<textarea class="des-titulo" rows="1" id="dt-${it.id}" placeholder="Nome do desafio"></textarea><textarea id="dx-${it.id}" placeholder="Especifique o desafio: o que vai fazer, por quanto tempo, como vai medir e por que ele importa."></textarea><div class="acoes"><button class="rm">Excluir</button><button class="fechar">Fechar</button></div>`;
@@ -838,6 +848,19 @@ const docT=id=>fsDoc(fdbT,"usuarios",uidT,"projetos",id);
 function atualizarTempos(){
   document.querySelectorAll("[data-tempo]").forEach(el=>{const p=visivelT(tProj[el.dataset.tempo])?tProj[el.dataset.tempo]:null;el.textContent=p?curto(totalT(p)):"";el.classList.toggle("rodando",!!(p&&p.ativo))});
   document.querySelectorAll("[data-tempo-rel]").forEach(el=>{const p=tProj[el.dataset.tempoRel];if(p)el.textContent=relogio(totalT(p))});
+  document.querySelectorAll("[data-relogio]").forEach(el=>{const p=visivelT(tProj[el.dataset.relogio])?tProj[el.dataset.relogio]:null;el.textContent=p?relogio(totalT(p)):(uidT?"":"conecte o Tempo");el.classList.toggle("rodando",!!(p&&p.ativo));el.classList.toggle("sem",!p)});
+  document.querySelectorAll("[data-play]").forEach(el=>{const p=visivelT(tProj[el.dataset.play])?tProj[el.dataset.play]:null;el.hidden=!p;if(p&&!el.disabled&&(el.textContent==="Iniciar"||el.textContent==="Pausar"))el.textContent=p.ativo?"Pausar":"Iniciar";el.classList.toggle("on",!!(p&&p.ativo))});
+}
+async function alternarTempo(id){
+  const q=Object.assign({},tProj[id]),agora=Date.now();
+  if(q.ativo){if(agora-q.ativo>=1000)q.sessoes=[...(q.sessoes||[]),{inicio:q.ativo,fim:agora}];q.ativo=null}
+  else{
+    let feito=0;for(const x of q.sessoes||[])feito+=x.fim-x.inicio;
+    if(q.tipo==="timer"&&q.meta>0&&feito>=q.meta)return "Timer concluído";
+    q.ativo=agora;
+  }
+  await setDoc(docT(id),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
+  return "";
 }
 setInterval(atualizarTempos,1000);
 /* projetos novos do Tempo dos projetos viram desafios sozinhos */
@@ -900,14 +923,7 @@ function caixaTempo(it,d){
     const acao=ac.dataset.acao;
     try{
       if(acao==="alternar"){
-        const q=Object.assign({},tProj[it.tempoId]),agora=Date.now();
-        if(q.ativo){if(agora-q.ativo>=1000)q.sessoes=[...(q.sessoes||[]),{inicio:q.ativo,fim:agora}];q.ativo=null}
-        else{
-          let feito=0;for(const x of q.sessoes||[])feito+=x.fim-x.inicio;
-          if(q.tipo==="timer"&&q.meta>0&&feito>=q.meta){ac.textContent="Timer concluído";return}
-          q.ativo=agora;
-        }
-        await setDoc(docT(it.tempoId),{sessoes:q.sessoes||[],ativo:q.ativo||null},{merge:true});
+        const m=await alternarTempo(it.tempoId);if(m){ac.textContent=m;return}
       }else if(acao==="criar"){
         const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
         it.tempoId=id;save("desafios");
