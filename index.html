@@ -45,7 +45,7 @@ img{max-width:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
 .grade{max-width:920px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 .voltar{display:flex}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(180px,calc((100vh - 180px) / 2));gap:18px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(180px,calc((100vh - 180px) / 2));gap:18px}
 .tile{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;color:var(--fg);transition:transform .18s ease,box-shadow .18s ease,border-color .18s;min-width:0;overflow:hidden}
 .tile:hover{transform:translateY(-3px);border-color:var(--accent-mid);box-shadow:0 16px 34px -22px var(--accent)}
 .periodo{display:inline-block;color:var(--accent);font-weight:500;font-size:.62em;letter-spacing:.02em;white-space:nowrap;vertical-align:.12em}
@@ -54,7 +54,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px
 .tile .num{display:block;font-family:var(--display);font-size:clamp(34px,4vw,46px);line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
 .tile .num.menor{font-size:clamp(24px,2.6vw,30px)}
 .tile .abrir{font-size:13px;color:var(--accent);font-weight:600}
-.tile.prim{background:var(--hero);color:var(--hero-ink);border-color:transparent}
+.tile.prim{grid-column:span 2;background:var(--hero);color:var(--hero-ink);border-color:transparent}
 .tile.prim .rotulo,.tile.prim .resumo{color:var(--hero-muted)}
 .tile.prim .num,.tile.prim .abrir{color:var(--hero-ink)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;display:flex;flex-direction:column;gap:22px}
@@ -179,8 +179,11 @@ button{font:inherit;cursor:pointer}
 
 /* 5. Diário */
 .diario{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+@media (min-width:900px){.diario{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:36px;align-items:start}}
+#dia-texto{min-height:220px}
+.dia-edit .dica{color:var(--muted);font-size:14px;margin:0}
 .mes{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.mes strong{font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:.02em;text-transform:capitalize}
+.mes strong{font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:.02em}
 .mes button{background:var(--accent-soft);border:0;border-radius:999px;width:36px;height:36px;color:var(--fg);font-size:18px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal .sem{font-size:12px;text-align:center;color:var(--muted);padding:4px 0;font-weight:600}
@@ -242,7 +245,7 @@ button{font:inherit;cursor:pointer}
 .desafio .acoes button.sim{color:var(--accent);font-weight:600}
 .vazio-des{border:1.5px dashed var(--accent-mid);border-radius:12px;padding:24px;color:var(--muted);text-align:center}
 
-@media (max-width:760px){
+@media (max-width:1000px){
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(160px,auto);gap:12px}
   .tile{padding:16px}
 }
@@ -375,7 +378,7 @@ button{font:inherit;cursor:pointer}
     <div class="cab">
       <div class="rotulo">Todos os dias</div>
       <h2>Diário de gratidão</h2>
-      <p>Clique em um dia para escrever. Os dias com registro ficam marcados com um ponto.</p>
+      <p>O dia de hoje já vem aberto para você escrever. Para ler ou escrever em outro dia, clique nele no calendário. Os dias com registro ficam marcados com um ponto.</p>
     </div>
     <div class="diario">
       <div>
@@ -388,10 +391,11 @@ button{font:inherit;cursor:pointer}
       </div>
       <div class="dia-edit">
         <h3 id="dia-titulo"></h3>
-        <textarea id="dia-texto" placeholder="Pelo que você é grata hoje?"></textarea>
+        <textarea id="dia-texto" placeholder="Quais são os motivos pelos quais você é grata hoje?"></textarea>
+        <button class="btn linha" id="dia-hoje" hidden>Voltar para hoje</button>
       </div>
     </div>
-    <div class="notas-mes">
+    <div class="notas-mes" hidden>
       <h3 id="notas-titulo">Anotações livres</h3>
       <textarea id="notas-texto" placeholder="Um espaço para escrever fora dos dias: reflexões do mês, aprendizados, o que você quer lembrar."></textarea>
     </div>
@@ -751,14 +755,14 @@ $("#percebida-arquivo").addEventListener("change",async e=>{
 $("#percebida .subir label").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#percebida-arquivo").click()}});
 
 /* ---------- 5. diário ---------- */
-const hoje=new Date();hoje.setHours(0,0,0,0);
+let hoje=new Date();hoje.setHours(0,0,0,0);
 let vis=new Date(hoje.getFullYear(),hoje.getMonth(),1), sel=new Date(hoje);
 const pad=n=>String(n).padStart(2,"0");
 const chaveDia=d=>"d-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const chaveMes=d=>"m-"+d.getFullYear()+"-"+pad(d.getMonth()+1);
 function temTexto(id){const d=cache[id]||lsGet(id);return d&&d.texto&&d.texto.trim()}
 function renderCal(){
-  $("#mes-nome").textContent=MESES[vis.getMonth()]+" de "+vis.getFullYear();
+  {const m=MESES[vis.getMonth()];$("#mes-nome").textContent=m[0].toUpperCase()+m.slice(1)+" de "+vis.getFullYear()}
   const c=$("#cal");c.innerHTML=["D","S","T","Q","Q","S","S"].map(s=>`<div class="sem">${s}</div>`).join("");
   for(let i=0;i<vis.getDay();i++)c.appendChild(document.createElement("div"));
   const dias=new Date(vis.getFullYear(),vis.getMonth()+1,0).getDate();
@@ -773,11 +777,17 @@ function renderCal(){
   const nt=$("#notas-texto");nt.value=(get(chaveMes(vis),{texto:""}).texto)||"";autoAltura(nt);
 }
 function renderDia(){
-  $("#dia-titulo").textContent=sel.getDate()+" de "+MESES[sel.getMonth()]+" de "+sel.getFullYear();
+  const ehHoje=+sel===+hoje;
+  $("#dia-titulo").textContent=(ehHoje?"Hoje, ":"")+sel.getDate()+" de "+MESES[sel.getMonth()]+" de "+sel.getFullYear();
+  $("#dia-texto").placeholder=ehHoje?"Quais são os motivos pelos quais você é grata hoje?":"Quais foram os motivos pelos quais você foi grata neste dia?";
+  $("#dia-hoje").hidden=ehHoje;
   const t=$("#dia-texto");t.value=(get(chaveDia(sel),{texto:""}).texto)||"";autoAltura(t);
 }
 $("#dia-texto").addEventListener("input",e=>{const id=chaveDia(sel),d=get(id,{texto:""});const tinha=!!(d.texto&&d.texto.trim());d.texto=e.target.value;save(id);autoAltura(e.target);if(tinha!==!!d.texto.trim())renderCal()});
 $("#notas-texto").addEventListener("input",e=>{const id=chaveMes(vis),d=get(id,{texto:""});d.texto=e.target.value;save(id);autoAltura(e.target)});
+function abrirDiario(){hoje=new Date();hoje.setHours(0,0,0,0);sel=new Date(hoje);vis=new Date(hoje.getFullYear(),hoje.getMonth(),1);renderCal();renderDia()}
+$("#dia-hoje").addEventListener("click",()=>{abrirDiario();$("#dia-texto").focus()});
+function diasGratos(){const h=new Date();let n=0;const dias=new Date(h.getFullYear(),h.getMonth()+1,0).getDate();for(let i=1;i<=dias;i++)if(temTexto(chaveDia(new Date(h.getFullYear(),h.getMonth(),i))))n++;return n}
 $("#mes-ant").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.getMonth()-1,1);renderCal()});
 $("#mes-prox").addEventListener("click",()=>{vis=new Date(vis.getFullYear(),vis.getMonth()+1,1);renderCal()});
 
@@ -815,14 +825,15 @@ function renderDes(){
 $("#des-novo").addEventListener("click",()=>{const d=get("desafios",{itens:[]});const id=Date.now().toString(36);d.itens.unshift({id,titulo:"",texto:""});desAbertos.add(id);save("desafios");renderDes();const el=document.getElementById("dt-"+id);if(el)el.focus()});
 
 /* ---------- início ---------- */
-const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["percebida","Imagem","Como eu quero ser percebida"],["desafios","Compromissos","Desafios comigo mesma"]];
-const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,percebida:renderPercebida,desafios:renderDes};
+const SECOES=[["vida","Visão","A vida que eu quero ter"],["cem","Lista","101 coisas para fazer em 101 dias"],["areas","Equilíbrio","Áreas da vida"],["pessoa","Identidade","A pessoa que eu quero ser"],["percebida","Imagem","Como eu quero ser percebida"],["desafios","Compromissos","Desafios comigo mesma"],["diario","Todos os dias","Diário de gratidão"]];
+const RENDER={vida:renderVida,cem:renderCem,areas:renderAreas,pessoa:renderPessoa,percebida:renderPercebida,desafios:renderDes,diario:abrirDiario};
 function resumo(id){
   if(id==="vida"){const t=(get("vida",{texto:""}).texto||"").trim();return t?`<span class="resumo">${esc(t)}</span>`:`<span class="resumo">Escreva aqui a descrição da vida que você quer ter.</span>`}
   if(id==="cem"){const d=lista();return `<div><span class="num menor">${d.itens.filter(i=>i.f).length} de 101</span></div>`}
   if(id==="areas"){const n=areas().itens.filter(a=>a.nota>0).map(a=>a.nota);const m=n.length?(n.reduce((x,y)=>x+y,0)/n.length).toFixed(1).replace(".",","):"–";return `<div><span class="num">${m}</span><span class="resumo">média de ${n.length} de 10 áreas avaliadas</span></div>`}
   if(id==="pessoa"){const d=get("pessoa",{texto:"",imagens:[]});const hs=(d.habilidades||[]).filter(h=>(h.t||"").trim());const q=hs.filter(h=>h.f).length;return `<div><span class="num menor">${q} de ${hs.length}</span><span class="resumo">habilidades conquistadas</span></div>`}
   if(id==="percebida"){const d=get("percebida",{texto:"",imagens:[]});const hs=(d.habilidades||[]).filter(h=>(h.t||"").trim());const q=hs.filter(h=>h.f).length;return `<div><span class="num menor">${q} de ${hs.length}</span><span class="resumo">características conquistadas</span></div>`}
+  if(id==="diario"){const n=diasGratos(),h=new Date();h.setHours(0,0,0,0);const feito=temTexto(chaveDia(h));return `<div><span class="num">${n}</span><span class="resumo">${n===1?"dia registrado":"dias registrados"} em ${MESES[h.getMonth()]}${feito?". Hoje já está escrito.":". Hoje ainda está em branco."}</span></div>`}
   if(id==="desafios"){const q=get("desafios",{itens:[]}).itens.length;return `<div><span class="num">${q}</span><span class="resumo">${q===1?"desafio criado":"desafios criados"}</span></div>`}
 }
 function renderTiles(){
