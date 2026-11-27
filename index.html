@@ -290,14 +290,13 @@ body.arrastando-algo,body.arrastando-algo *{user-select:none;-webkit-user-select
 
 <div class="wrap">
   <header class="topo">
-    <h1>Painel da vida</h1>
+    <h1 id="ir-inicio" role="button" tabindex="0" title="Voltar ao início do painel">Painel da vida</h1>
     <div class="topo-dir"><span class="status" id="status" aria-live="polite">Carregando</span><button class="btn linha" id="versoes">Versões salvas</button><button class="btn linha" id="importar-bk">Importar backup</button><input type="file" id="arquivo-bk" accept="application/json,.json" hidden><button class="btn linha" id="exportar" hidden>Exportar meus dados</button><button class="btn linha" id="sair">Sair</button></div>
   </header>
 
   <nav class="tiles" id="tiles" aria-label="Partes do painel"></nav>
 
   <div class="grade" id="grade" hidden>
-  <div class="voltar"><button class="btn sec" id="voltar">‹ Voltar ao painel</button></div>
   <section id="vida" hidden>
     <div class="cab">
       <div class="rotulo">Visão</div>
@@ -994,7 +993,7 @@ function renderTiles(){
 }
 function abrir(id){$("#tiles").hidden=true;$("#grade").hidden=false;SECOES.forEach(([s])=>{document.getElementById(s).hidden=s!==id});RENDER[id]();window.scrollTo(0,0)}
 function fechar(){$("#grade").hidden=true;$("#tiles").hidden=false;renderTiles();window.scrollTo(0,0)}
-$("#voltar").addEventListener("click",fechar);
+{const t=$("#ir-inicio");t.style.cursor="pointer";t.addEventListener("click",fechar);t.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fechar()}})}
 function renderTudo(){renderVida();renderCem();renderAreas();renderPessoa();renderPercebida();renderCal();renderDia();renderPerguntas();renderDes();renderTiles();renderConexao()}
 
 /* ---------- ligação com o Tempo dos projetos ---------- */
